@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.10.1](https://github.com/rust142/geeto/compare/v0.10.0...v0.10.1) (2026-07-13)
+
+### Other Changes
+
+* refactor: remove unused tooling and simplify main menu ([8d153f4](https://github.com/rust142/geeto/commit/8d153f4))
+
 ## [0.10.0](https://github.com/rust142/geeto/compare/v0.9.1...v0.10.0) (2026-05-29)
 
 ### Features

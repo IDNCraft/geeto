@@ -326,6 +326,13 @@ export async function handleCleanup(featureBranch: string, state: GeetoState): P
               deleteProgress.start([`Deleting origin/${featureBranch}`])
               await execAsync(`git push origin --delete ${featureBranch}`, true)
               deleteProgress.succeed(`Remote branch '${featureBranch}' deleted`)
+              try {
+                exec(`git branch -d "${featureBranch}"`, true)
+                log.success(`Local branch '${featureBranch}' deleted`)
+              } catch {
+                exec(`git branch -D "${featureBranch}"`, true)
+                log.success(`Local branch '${featureBranch}' force-deleted`)
+              }
             } catch {
               // Remote branch might not exist, ignore error
             }

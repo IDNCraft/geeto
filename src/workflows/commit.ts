@@ -787,9 +787,9 @@ export const handleCommitWorkflow = async (
           .slice(lines.indexOf(subject) + 1)
           .join('\n')
           .trim()
-        log.ai(`Suggested Commit:\n\n${colors.cyan}${colors.bright}${subject}`)
+        log.ai(`Suggested Commit:\n\n${colors.cyan}${colors.bright}${subject}${colors.reset}`)
         if (body) {
-          console.log('\n' + body + `${colors.reset}\n`)
+          console.log(`\n${colors.cyan}${body}${colors.reset}\n`)
         }
         log.info(
           'Incorrect Suggestion? check .geeto/last-ai-suggestion.json (possible AI/context limit).'

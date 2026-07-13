@@ -143,6 +143,7 @@ export const confirm = (question: string, defaultYes: boolean = true): boolean =
   process.stdin.setRawMode(true)
 
   const buf = Buffer.alloc(16)
+  let rawModeOK = false
 
   try {
     for (;;) {
@@ -153,6 +154,7 @@ export const confirm = (question: string, defaultYes: boolean = true): boolean =
         break
       }
       if (n === 0) break
+      rawModeOK = true
 
       const b = buf[0] as number | undefined
       if (b === undefined) break
@@ -210,6 +212,15 @@ export const confirm = (question: string, defaultYes: boolean = true): boolean =
     }
     process.stdout.write('\u001B[?25h') // Show cursor
     rl.resume()
+  }
+
+  // Raw mode loop didn't get any input (e.g. fs.readSync returned 0 or threw).
+  // Fall back to askQuestion so we don't silently accept the default.
+  if (!rawModeOK) {
+    const suffix = defaultYes ? ' (Y/n): ' : ' (y/N): '
+    const answer = askQuestion(`${cleanQuestion} ${suffix}`)
+    if (answer === '') return defaultYes
+    return answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes'
   }
 
   return selected ?? defaultYes

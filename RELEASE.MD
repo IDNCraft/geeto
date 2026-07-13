@@ -1,5 +1,15 @@
 # Releases
 
+## v0.10.1 — July 13, 2026
+
+### What's New?
+
+#### Other Improvements
+
+- Removed unused tools and made the main menu simpler
+
+---
+
 ## v0.10.0 — May 29, 2026
 
 ### What's New?

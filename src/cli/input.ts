@@ -144,12 +144,21 @@ export const confirm = (question: string, defaultYes: boolean = true): boolean =
 
   const buf = Buffer.alloc(16)
   let rawModeOK = false
+  let fd = 0
+  let usingTty = false
 
   try {
+    try {
+      fd = fs.openSync(process.platform === 'win32' ? 'CONIN$' : '/dev/tty', 'r')
+      usingTty = true
+    } catch {
+      fd = 0
+    }
+
     for (;;) {
       let n: number
       try {
-        n = fs.readSync(0, buf, 0, buf.length, null)
+        n = fs.readSync(fd, buf, 0, buf.length, null)
       } catch {
         break
       }
@@ -212,11 +221,19 @@ export const confirm = (question: string, defaultYes: boolean = true): boolean =
     }
     process.stdout.write('\u001B[?25h') // Show cursor
     rl.resume()
+    if (usingTty && fd !== 0) {
+      try {
+        fs.closeSync(fd)
+      } catch {
+        // Ignore
+      }
+    }
   }
 
   // Raw mode loop didn't get any input (e.g. fs.readSync returned 0 or threw).
   // Fall back to askQuestion so we don't silently accept the default.
   if (!rawModeOK) {
+    process.stdout.write('\r\u001B[K\u001B[1A\r\u001B[K')
     const suffix = defaultYes ? ' (Y/n): ' : ' (y/N): '
     const answer = askQuestion(`${cleanQuestion} ${suffix}`)
     if (answer === '') return defaultYes

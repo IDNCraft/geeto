@@ -15,6 +15,7 @@ Format:
 <Optional body explaining the change. Separate from subject by a single blank line.>
 
 Rules:
+
 - Use imperative mood.
 - Lowercase after the colon — e.g. "feat(scope): add" NOT "feat(scope): Add".
 - Do not include any extraneous commentary or markers.

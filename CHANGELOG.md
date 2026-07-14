@@ -1,5 +1,28 @@
 # Changelog
 
+## [0.11.0](https://github.com/rust142/geeto/compare/v0.10.1...v0.11.0) (2026-07-14)
+
+### Features
+
+* feat(cli): add self-update command ([240c38d](https://github.com/rust142/geeto/commit/240c38d))
+* feat(ai): add OpenAI Codex integration and SDK model selection ([e8dcc1c](https://github.com/rust142/geeto/commit/e8dcc1c))
+
+### Bug Fixes
+
+* fix(alias): improve PowerShell profile detection on Windows ([536ec74](https://github.com/rust142/geeto/commit/536ec74))
+* fix(doctor): improve install method detection and fallback bin resolution ([647aba2](https://github.com/rust142/geeto/commit/647aba2))
+* fix(input): add safe readline pause/resume wrappers to prevent errors ([87fbb01](https://github.com/rust142/geeto/commit/87fbb01))
+* fix(ai): improve AI failure handling with context/error detection and recovery menu ([d5316aa](https://github.com/rust142/geeto/commit/d5316aa))
+* fix(commit): prevent regenerate when skipping failed commit scenarios ([2f86a40](https://github.com/rust142/geeto/commit/2f86a40))
+* fix(settings): show move-to-global AI config option only when local config exists ([b42b4b1](https://github.com/rust142/geeto/commit/b42b4b1))
+* fix(input): improve cross-platform terminal input handling in confirm ([9edbe5b](https://github.com/rust142/geeto/commit/9edbe5b))
+
+### Other Changes
+
+* docs(readme): add OpenAI Codex support to AI workflow and setup docs ([4451ac4](https://github.com/rust142/geeto/commit/4451ac4))
+* chore(deps): remove cspell, danger, and update major deps ([020032c](https://github.com/rust142/geeto/commit/020032c))
+* chore(release): v0.10.1 ([0e60cec](https://github.com/rust142/geeto/commit/0e60cec))
+
 ## [0.10.1](https://github.com/rust142/geeto/compare/v0.10.0...v0.10.1) (2026-07-13)
 
 ### Other Changes

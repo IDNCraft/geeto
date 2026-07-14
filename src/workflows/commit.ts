@@ -893,6 +893,7 @@ export const handleCommitWorkflow = async (
 
           if (!chosenModel) {
             // setup failed; re-prompt later
+            skipRegenerate = true
             continue
           }
 
@@ -1035,9 +1036,11 @@ export const handleCommitWorkflow = async (
               return true
             }
             // If commit didn't happen, continue the loop to allow later actions
+            skipRegenerate = true
             continue
           }
           // If no edit provided, continue the loop
+          skipRegenerate = true
           continue
         }
       }

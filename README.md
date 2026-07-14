@@ -111,7 +111,13 @@ The installer shows step-by-step progress, detects existing installs, and verifi
 
 ### Uninstall
 
-Choose **one** method based on how you installed:
+Geeto has a smart uninstall command that **auto-detects** your install method:
+
+```bash
+geeto --uninstall
+```
+
+It will detect whether you installed via Homebrew, npm, bun, or binary and run the correct uninstall command. You can also uninstall manually:
 
 | Method   | Command                                                                                      |
 | -------- | -------------------------------------------------------------------------------------------- |
@@ -128,7 +134,13 @@ The uninstall script supports flags:
 
 ### Update
 
-Choose **one** method based on how you installed:
+Geeto has a built-in update command that **auto-detects** your install method:
+
+```bash
+geeto --update
+```
+
+It will check for the latest version from your install source (Homebrew tap, npm registry, or GitHub releases) and upgrade automatically. You can also update manually:
 
 | Method   | Command                                                                                   |
 | -------- | ----------------------------------------------------------------------------------------- |
@@ -138,7 +150,11 @@ Choose **one** method based on how you installed:
 | Binary   | Download the latest binary from [Releases](https://github.com/rust142/geeto/releases)     |
 | Source   | `curl -fsSL https://raw.githubusercontent.com/rust142/geeto/main/tools/update.sh \| bash` |
 
-The update script auto-detects your install method and guides you to the right upgrade path.
+For daily use, Geeto also **checks for new versions automatically** on startup and offers to update when one is available. Check the current version and update status with:
+
+```bash
+geeto -v, --version
+```
 
 ---
 
@@ -255,8 +271,16 @@ Each step can also be run individually.
 | `geeto -f, --fresh`    | Start fresh (ignore checkpoint)     |
 | `geeto -r, --resume`   | Resume from last checkpoint         |
 | `geeto -dr, --dry-run` | Simulate commands without executing |
-| `geeto -v, --version`  | Show version                        |
+| `geeto -v, --version`  | Show version + update status        |
 | `geeto -h, --help`     | Show help                           |
+
+### Management
+
+| Command               | Description                         |
+| --------------------- | ----------------------------------- |
+| `geeto -up, --update` | Update geeto to the latest version  |
+| `geeto --where`       | Show installation path & method     |
+| `geeto --uninstall`   | Uninstall geeto with auto-detection |
 
 ---
 
@@ -343,7 +367,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
 2. Create a branch: `dev#your-feature`
 3. Make your changes
 4. Run checks: `bun run check:fast && bun run check:full`
-5. Submit a Pull Request to `develop` branch
+5. Submit a Pull Request to `main` branch
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
 

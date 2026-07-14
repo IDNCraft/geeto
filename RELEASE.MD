@@ -1,5 +1,31 @@
 # Releases
 
+## v0.11.0 — July 14, 2026
+
+### What's New?
+
+#### New Features
+
+- Added a self-update command to easily update the CLI
+- Integrated OpenAI Codex with the AI features, allowing users to select models
+
+#### Bug Fixes
+
+- Improved PowerShell profile detection for better alias setup on Windows
+- Enhanced install method detection and fallback when resolving binaries
+- Added safety checks to input handling to prevent readline errors
+- Improved AI failure detection with better error handling and a recovery menu
+- Stopped commit regeneration when skipping failed commit scenarios
+- Now shows the option to move AI config to global only when a local config exists
+- Improved terminal input handling during confirmation prompts for better cross-platform support
+
+#### Other Improvements
+
+- Updated documentation to include OpenAI Codex support in AI workflow and setup instructions
+- Removed unused dependencies and updated several major dependencies for improved performance and security
+
+---
+
 ## v0.10.1 — July 13, 2026
 
 ### What's New?

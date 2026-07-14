@@ -65,19 +65,7 @@ export const handleBranchCreationWorkflow = async (
     const devBranches = ['development', 'develop', 'dev']
     const prodBranches = ['main', 'master']
 
-    if (prodBranches.includes(cur)) {
-      // Always warn on main/master — this is production!
-      log.warn(
-        `You're creating a branch from '${state.currentBranch}' (production).` +
-          ` Branch will use '${defaultPrefix}' prefix.` +
-          ` Consider branching from development instead.`
-      )
-      console.log('')
-      const proceed = confirm('Continue anyway?')
-      if (!proceed) {
-        return { branchName: state.currentBranch, created: false }
-      }
-    } else if (!devBranches.includes(cur)) {
+    if (!devBranches.includes(cur) && !prodBranches.includes(cur)) {
       // Not a known dev or prod branch — check allowedBases config
       const allowedBases = branchConfig?.allowedBases ?? []
       if (!allowedBases.includes(cur)) {

@@ -4,6 +4,7 @@ import path from 'node:path'
 import { Codex } from '@openai/codex-sdk'
 
 import {
+  buildCommitPrompt,
   buildPromptWithCorrection,
   buildReleaseNotesPrompt,
   cleanAIContent,
@@ -77,7 +78,7 @@ export const generateCommitMessage = async (
   _model?: string
 ): Promise<string | null> => {
   if (!ensureClient()) return null
-  const prompt = buildPromptWithCorrection('commit-message-prompt.md', diff, 'Diff', correction)
+  const prompt = buildCommitPrompt(diff, correction)
   try {
     const thread = (codexInstance as Codex).startThread()
     const result = await thread.run(prompt)

@@ -5,6 +5,7 @@ import { GenerateContentResponse, GoogleGenAI, Model, Pager } from '@google/gena
 
 import { GeminiModel } from './gemini.js'
 import {
+  buildCommitPrompt,
   buildPromptWithCorrection,
   buildReleaseNotesPrompt,
   cleanAIContent,
@@ -79,7 +80,7 @@ export const generateCommitMessage = async (
   correction?: string,
   model?: GeminiModel
 ): Promise<string | null> => {
-  const prompt = buildPromptWithCorrection('commit-message-prompt.md', diff, 'Diff', correction)
+  const prompt = buildCommitPrompt(diff, correction)
 
   const result = await client?.models.generateContent({
     model: model ?? 'gemini-2.5-flash',

@@ -5,6 +5,7 @@ import OpenAI from 'openai'
 
 import { OpenRouterModel } from './openrouter.js'
 import {
+  buildCommitPrompt,
   buildPromptWithCorrection,
   buildReleaseNotesPrompt,
   cleanAIContent,
@@ -69,7 +70,7 @@ export const generateCommitMessage = async (
   model?: OpenRouterModel
 ): Promise<string | null> => {
   if (!ensureClient()) return null
-  const prompt = buildPromptWithCorrection('commit-message-prompt.md', diff, 'Diff', correction)
+  const prompt = buildCommitPrompt(diff, correction)
 
   try {
     const completion = await (client as OpenAI).chat.completions.create({

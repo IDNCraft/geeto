@@ -84,6 +84,7 @@ export interface BranchStrategyConfig {
   protectedBranches?: string[] // Custom protected branches (beyond defaults)
   allowedBases?: string[] // Custom base branches allowed for branching (no warning)
   projectTool?: TaskPlatform // Project management tool for issue ID linking
+  maxWords?: number // Max words in generated branch name (1-3)
 }
 
 export type TaskPlatform = 'trello' | 'none'
@@ -121,4 +122,14 @@ export interface GitLabConfig {
   token: string
   /** GitLab instance URL (default: https://gitlab.com) */
   url?: string
+}
+
+export type CommitStyle = 'singleline' | 'multiline'
+export type CommitTone = 'technical' | 'concise' | 'descriptive'
+export type SubjectLength = 50 | 72 | 100
+
+export interface CommitConfig {
+  style: CommitStyle
+  subjectLength: SubjectLength
+  tone?: CommitTone
 }

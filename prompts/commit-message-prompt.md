@@ -1,8 +1,15 @@
-Generate a conventional commit message from this git diff. Output ONLY the commit message in this format:
+Generate a conventional commit message from this git diff. Output ONLY the commit message.
 
+Format:
 <type>(<scope>): <short summary>
 
-<Detailed multi-line body explaining the change. Wrap lines at ~72 characters. LIMITS: subject max 100 chars; body max 360 chars. Include why the change was made and any important notes. Separate subject and body by a single blank line. Do not include any extraneous commentary or markers. Use imperative mood.
+<Optional body explaining the change. Separate from subject by a single blank line.>
+
+Rules:
+
+- Use imperative mood.
+- Lowercase after the colon — e.g. "feat(scope): add" NOT "feat(scope): Add".
+- Do not include any extraneous commentary or markers.
 
 Example:
 refactor(ai): migrate providers to SDKs

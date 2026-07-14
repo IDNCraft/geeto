@@ -105,8 +105,24 @@ export const ensureGroq = async (): Promise<boolean> => {
   return false
 }
 
+export const ensureCodex = async (): Promise<boolean> => {
+  try {
+    const { hasCodexConfig } = await import('../utils/config.js')
+    if (hasCodexConfig()) {
+      return true
+    }
+    const mod = await import('./codex-sdk-setup.js')
+    if (typeof mod.setupCodexConfigInteractive === 'function') {
+      return mod.setupCodexConfigInteractive()
+    }
+  } catch {
+    log.warn('Codex setup helper not available.')
+  }
+  return false
+}
+
 export const ensureAIProvider = async (
-  aiProvider: 'gemini' | 'copilot' | 'openrouter' | 'groq'
+  aiProvider: 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'codex'
 ): Promise<boolean> => {
   switch (aiProvider) {
     case 'gemini': {
@@ -120,6 +136,9 @@ export const ensureAIProvider = async (
     }
     case 'groq': {
       return ensureGroq()
+    }
+    case 'codex': {
+      return ensureCodex()
     }
     default: {
       log.error(`Unknown AI provider: ${aiProvider}`)

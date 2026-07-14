@@ -9,7 +9,7 @@ import { ensureGeetoIgnored } from './config.js'
 import { STEP } from '../core/constants.js'
 
 const STATE_FILE = '.geeto/geeto-state.json'
-const AI_PROVIDERS = new Set(['gemini', 'copilot', 'openrouter', 'groq', 'manual'])
+const AI_PROVIDERS = new Set(['gemini', 'copilot', 'openrouter', 'groq', 'codex', 'manual'])
 
 const normalizeState = (state: GeetoState): GeetoState => {
   const aiProvider = state.aiProvider?.toLowerCase()
@@ -68,6 +68,7 @@ export const preserveProviderState = (state: GeetoState): void => {
       openrouterModel: state.openrouterModel,
       geminiModel: state.geminiModel,
       groqModel: state.groqModel,
+      codexModel: state.codexModel,
     }
 
     // Reuse save logic to ensure .geeto exists and is ignored

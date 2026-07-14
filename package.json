@@ -112,6 +112,7 @@
   },
   "dependencies": {
     "@google/genai": "^1.42.0",
+    "@openai/codex-sdk": "^0.144.3",
     "openai": "^6.39.1"
   },
   "commitlint": {

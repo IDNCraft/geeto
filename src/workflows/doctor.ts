@@ -31,6 +31,29 @@ const MARKER_END = '# <<< geeto aliases <<<'
 
 // ── Detection helpers ──────────────────────────────────────────────
 
+const findGlobalNpmBinPath = (): string => {
+  try {
+    const prefix = execSilent('npm config get prefix').trim()
+    if (prefix) {
+      const p = path.join(prefix, 'bin', 'geeto')
+      if (fs.existsSync(p)) return p
+    }
+  } catch {
+    // Ignore
+  }
+  return ''
+}
+
+const findGlobalBunBinPath = (): string => {
+  try {
+    const p = path.join(os.homedir(), '.bun', 'bin', 'geeto')
+    if (fs.existsSync(p)) return p
+  } catch {
+    // Ignore
+  }
+  return ''
+}
+
 const findBinaryPath = (): string => {
   try {
     return execSilent('which geeto').trim()
@@ -58,7 +81,7 @@ const detectMethodFromPath = (binPath: string): InstallMethod => {
 
 const confirmWithPackageManager = (guess: InstallMethod): InstallMethod => {
   // Double-check Homebrew
-  if (guess === 'homebrew' || guess === 'binary') {
+  if (guess === 'homebrew' || guess === 'binary' || guess === 'unknown') {
     try {
       const result = execSilent('brew list geeto').trim()
       if (result) return 'homebrew'
@@ -68,7 +91,7 @@ const confirmWithPackageManager = (guess: InstallMethod): InstallMethod => {
   }
 
   // Double-check npm
-  if (guess === 'npm' || guess === 'binary') {
+  if (guess === 'npm' || guess === 'binary' || guess === 'unknown') {
     try {
       const result = execSilent('npm list -g geeto').trim()
       if (result && !result.includes('empty')) return 'npm'
@@ -78,7 +101,7 @@ const confirmWithPackageManager = (guess: InstallMethod): InstallMethod => {
   }
 
   // Double-check bun
-  if (guess === 'bun' || guess === 'binary') {
+  if (guess === 'bun' || guess === 'binary' || guess === 'unknown') {
     try {
       const result = execSilent('bun pm ls -g').trim()
       if (result.includes('geeto')) return 'bun'
@@ -114,12 +137,22 @@ const methodLabel = (method: InstallMethod): string => {
 // ── Core detection ─────────────────────────────────────────────────
 
 const detectInstallation = (): InstallInfo => {
-  const binPath = findBinaryPath()
+  let binPath = findBinaryPath()
 
   let method: InstallMethod = 'unknown'
   if (binPath) {
     const guess = detectMethodFromPath(binPath)
     method = confirmWithPackageManager(guess)
+  } else {
+    // If not found in PATH, check package managers directly
+    method = confirmWithPackageManager('unknown')
+
+    // Attempt to locate binary from package manager paths
+    if (method === 'npm') {
+      binPath = findGlobalNpmBinPath()
+    } else if (method === 'bun') {
+      binPath = findGlobalBunBinPath()
+    }
   }
 
   // Get version from the installed binary, not from source code
@@ -312,4 +345,5 @@ export async function handleUninstall(): Promise<void> {
   console.log('')
   log.success('geeto has been uninstalled. Thanks for using it! 👋')
   console.log('')
+  process.exit(0)
 }

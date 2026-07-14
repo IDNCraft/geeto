@@ -318,12 +318,16 @@ interface RewordContext {
 /** Resolve current AI provider and model from persisted state. */
 const resolveAIProvider = (
   state: GeetoState
-): { provider: 'gemini' | 'copilot' | 'openrouter' | 'groq'; model: string | undefined } => {
-  const provider: 'gemini' | 'copilot' | 'openrouter' | 'groq' =
+): {
+  provider: 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'codex'
+  model: string | undefined
+} => {
+  const provider: 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'codex' =
     (state.aiProvider === 'manual' ? undefined : state.aiProvider) ?? 'gemini'
 
   if (provider === 'copilot') return { provider, model: state.copilotModel as unknown as string }
   if (provider === 'groq') return { provider, model: state.groqModel ?? undefined }
+  if (provider === 'codex') return { provider, model: state.codexModel ?? undefined }
   if (provider === 'openrouter')
     return { provider, model: state.openrouterModel as unknown as string }
   return { provider, model: (state.geminiModel as unknown as string) ?? DEFAULT_GEMINI_MODEL }
@@ -364,11 +368,25 @@ const regenerateDirect = async (
       modelName = state.copilotModel as string
     } else if (state.aiProvider === 'openrouter' && state.openrouterModel) {
       modelName = state.openrouterModel as string
-    } else if (state.aiProvider === 'groq') {
-      modelName = state.groqModel ?? ''
-    } else if (state.aiProvider === 'gemini') {
-      modelName = (state.geminiModel as string) ?? DEFAULT_GEMINI_MODEL
-    }
+    } else
+      switch (state.aiProvider) {
+        case 'groq': {
+          modelName = state.groqModel ?? ''
+
+          break
+        }
+        case 'codex': {
+          modelName = state.codexModel ?? ''
+
+          break
+        }
+        case 'gemini': {
+          modelName = (state.geminiModel as string) ?? DEFAULT_GEMINI_MODEL
+
+          break
+        }
+        // No default
+      }
 
     if (correction) console.log('')
     const sp = new ScrambleProgress()
@@ -404,6 +422,11 @@ const regenerateDirect = async (
         case 'groq': {
           const { generateCommitMessage } = await import('../api/groq.js')
           aiResult = await generateCommitMessage(diff, correction, state.groqModel)
+          break
+        }
+        case 'codex': {
+          const { generateCommitMessage } = await import('../api/codex.js')
+          aiResult = await generateCommitMessage(diff, correction, state.codexModel)
           break
         }
         default: {
@@ -667,7 +690,8 @@ const generateNewMessages = async (
         state.copilotModel as CopilotModel,
         state.openrouterModel as OpenRouterModel,
         state.geminiModel as GeminiModel,
-        state.groqModel
+        state.groqModel,
+        state.codexModel
       )
       spinner.stop()
     } catch {
@@ -709,6 +733,7 @@ const generateNewMessages = async (
           | 'copilot'
           | 'openrouter'
           | 'groq'
+          | 'codex'
         let modelChoice: CopilotModel | OpenRouterModel | GeminiModel | string
         switch (provForFallback) {
           case 'copilot': {
@@ -726,37 +751,55 @@ const generateNewMessages = async (
 
             break
           }
-          default: {
+          case 'codex': {
+            modelChoice = state.codexModel ?? ''
+
+            break
+          }
+          case 'gemini': {
             modelChoice = (state.geminiModel as GeminiModel) ?? DEFAULT_GEMINI_MODEL
+            break
+          }
+          default: {
+            modelChoice = ''
+            break
           }
         }
 
         aiResult = await interactiveAIFallback(
-          firstAttempt ? initialAiResult : null,
+          initialAiResult,
           provForFallback,
           modelChoice,
           diff,
           correction,
           branch,
-          (provider: 'gemini' | 'copilot' | 'openrouter' | 'groq', model?: string) => {
+          (provider: 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'codex', model?: string) => {
             state.aiProvider = provider
             switch (provider) {
               case 'copilot': {
                 state.copilotModel = model as CopilotModel
+                state.codexModel = undefined
                 break
               }
               case 'openrouter': {
                 state.openrouterModel = model as OpenRouterModel
+                state.codexModel = undefined
                 break
               }
               case 'gemini': {
                 if (model && typeof model === 'string') {
                   state.geminiModel = model as GeminiModel
                 }
+                state.codexModel = undefined
                 break
               }
               case 'groq': {
                 state.groqModel = model
+                state.codexModel = undefined
+                break
+              }
+              case 'codex': {
+                state.codexModel = model
                 break
               }
               default: {
@@ -774,7 +817,18 @@ const generateNewMessages = async (
       forceDirect = false
 
       const commitMessage = aiResult ?? ''
-      if (!commitMessage) {
+      if (
+        !commitMessage ||
+        isTransientAIFailure(commitMessage) ||
+        isContextLimitFailure(commitMessage)
+      ) {
+        if (forceDirect) {
+          log.warn('AI generation failed or hit context limits. Returning to interactive menu...')
+          forceDirect = false
+          initialAiResult = aiResult
+          continue
+        }
+
         log.warn('Could not generate message; falling back to manual edit')
         const edited = await editMultiline(
           `Edit: ${commit.shortHash} ${commit.subject}`,
@@ -850,6 +904,7 @@ const generateNewMessages = async (
             },
             { label: 'OpenRouter', value: 'openrouter' },
             { label: 'Groq', value: 'groq' },
+            { label: 'Codex', value: 'codex' },
             { label: 'Back', value: 'back' },
           ])
 
@@ -859,7 +914,7 @@ const generateNewMessages = async (
           }
 
           const chosenModel = await chooseModelForProvider(
-            prov as 'gemini' | 'copilot' | 'openrouter' | 'groq',
+            prov as 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'codex',
             'Choose model:',
             'Back'
           )
@@ -869,14 +924,15 @@ const generateNewMessages = async (
             continue
           }
 
-          state.aiProvider = prov as 'gemini' | 'copilot' | 'openrouter' | 'groq'
-          currentProvider = prov as 'gemini' | 'copilot' | 'openrouter' | 'groq'
+          state.aiProvider = prov as 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'codex'
+          currentProvider = prov as 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'codex'
           switch (prov) {
             case 'copilot': {
               state.copilotModel = chosenModel as unknown as CopilotModel
               state.openrouterModel = undefined
               state.geminiModel = undefined
               state.groqModel = undefined
+              state.codexModel = undefined
               currentModel = chosenModel
               break
             }
@@ -885,6 +941,7 @@ const generateNewMessages = async (
               state.copilotModel = undefined
               state.geminiModel = undefined
               state.groqModel = undefined
+              state.codexModel = undefined
               currentModel = chosenModel
               break
             }
@@ -893,14 +950,25 @@ const generateNewMessages = async (
               state.copilotModel = undefined
               state.openrouterModel = undefined
               state.geminiModel = undefined
+              state.codexModel = undefined
               currentModel = chosenModel
               break
             }
-            default: {
+            case 'codex': {
+              state.codexModel = chosenModel
+              state.copilotModel = undefined
+              state.openrouterModel = undefined
+              state.geminiModel = undefined
+              state.groqModel = undefined
+              currentModel = chosenModel
+              break
+            }
+            case 'gemini': {
               state.geminiModel = chosenModel as unknown as GeminiModel
               state.copilotModel = undefined
               state.openrouterModel = undefined
               state.groqModel = undefined
+              state.codexModel = undefined
               currentModel = chosenModel
               break
             }
@@ -916,10 +984,11 @@ const generateNewMessages = async (
             currentProvider === 'gemini' ||
             currentProvider === 'copilot' ||
             currentProvider === 'openrouter' ||
-            currentProvider === 'groq'
+            currentProvider === 'groq' ||
+            currentProvider === 'codex'
               ? currentProvider
               : 'gemini'
-          ) as 'gemini' | 'copilot' | 'openrouter' | 'groq'
+          ) as 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'codex'
 
           const chosen = await chooseModelForProvider(provKey, 'Choose model:', 'Back')
 
@@ -931,24 +1000,33 @@ const generateNewMessages = async (
           switch (provKey) {
             case 'copilot': {
               state.copilotModel = chosen as unknown as CopilotModel
+              state.codexModel = undefined
               currentModel = chosen
               break
             }
             case 'openrouter': {
               state.openrouterModel = chosen as unknown as OpenRouterModel
+              state.codexModel = undefined
               currentModel = chosen
               break
             }
             case 'groq': {
               state.groqModel = chosen
+              state.codexModel = undefined
               currentModel = chosen
               break
             }
-            default: {
+            case 'codex': {
+              state.codexModel = chosen
+              currentModel = chosen
+              break
+            }
+            case 'gemini': {
               state.geminiModel = chosen as unknown as GeminiModel
               state.copilotModel = undefined
               state.openrouterModel = undefined
               state.groqModel = undefined
+              state.codexModel = undefined
               currentModel = chosen
               break
             }

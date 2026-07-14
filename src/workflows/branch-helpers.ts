@@ -326,7 +326,8 @@ export async function handleTrelloCase(
         state.copilotModel,
         state.openrouterModel,
         state.geminiModel,
-        state.groqModel
+        state.groqModel,
+        state.codexModel
       )
       spinner.stop()
     }
@@ -339,26 +340,35 @@ export async function handleTrelloCase(
         cardData.title,
         correction,
         state.currentBranch,
-        (provider: 'gemini' | 'copilot' | 'openrouter' | 'groq', selectedModel?: string) => {
+        (
+          provider: 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'codex',
+          selectedModel?: string
+        ) => {
           state.aiProvider = provider
           switch (provider) {
             case 'copilot': {
               state.copilotModel = selectedModel as CopilotModel
-
+              state.codexModel = undefined
               break
             }
             case 'openrouter': {
               state.openrouterModel = selectedModel as OpenRouterModel
-
+              state.codexModel = undefined
               break
             }
             case 'groq': {
               state.groqModel = selectedModel
-
+              state.codexModel = undefined
+              break
+            }
+            case 'codex': {
+              state.codexModel = selectedModel
               break
             }
             default: {
               state.geminiModel = selectedModel as GeminiModel
+              state.codexModel = undefined
+              break
             }
           }
           saveState(state)

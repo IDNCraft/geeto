@@ -271,6 +271,17 @@ export const getGroqConfig = (): { apiKey: string } => {
 
 export const hasGroqConfig = (): boolean => !!getGroqConfig().apiKey
 
+export const getCodexConfigPath = (): string => '.geeto/codex.toml'
+
+export const hasCodexConfig = (): boolean => {
+  try {
+    const configPath = resolveConfigPath('codex.toml')
+    return fs.existsSync(configPath)
+  } catch {
+    return false
+  }
+}
+
 /**
  * Read branch strategy config
  */

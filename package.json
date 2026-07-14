@@ -7,6 +7,28 @@
     "name": "Agung Maulana Malik",
     "url": "https://github.com/rust142"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rust142/geeto.git"
+  },
+  "keywords": [
+    "git",
+    "cli",
+    "ai",
+    "commit-message",
+    "branch-name",
+    "gemini",
+    "copilot",
+    "workflow",
+    "trello",
+    "openrouter",
+    "groq",
+    "codex",
+    "release",
+    "changelog",
+    "git-automation",
+    "conventional-commits"
+  ],
   "license": "MIT",
   "type": "module",
   "bin": {

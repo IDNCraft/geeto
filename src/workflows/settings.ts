@@ -51,7 +51,7 @@ const moveConfigToGlobal = (name: string): boolean => {
   }
 }
 
-const AI_PROVIDERS = ['gemini', 'openrouter', 'groq', 'github', 'gitlab'] as const
+const AI_PROVIDERS = ['gemini', 'openrouter', 'groq', 'codex', 'github', 'gitlab'] as const
 type AiProvider = (typeof AI_PROVIDERS)[number]
 
 const globalConfigPath = (name: string) => path.join(GLOBAL_GEETO_DIR, `${name}.toml`)
@@ -107,6 +107,7 @@ const handleGlobalConfigSetting = async (): Promise<boolean | void> => {
         { label: 'Gemini', value: 'gemini' },
         { label: 'OpenRouter', value: 'openrouter' },
         { label: 'Groq', value: 'groq' },
+        { label: 'Codex', value: 'codex' },
         { label: 'GitHub Copilot', value: 'github' },
         { label: 'GitLab', value: 'gitlab' },
         { label: 'Back', value: 'back' },
@@ -130,6 +131,11 @@ const handleGlobalConfigSetting = async (): Promise<boolean | void> => {
         case 'groq': {
           const { setupGroqConfigInteractive } = await import('../core/groq-setup.js')
           setupGroqConfigInteractive()
+          break
+        }
+        case 'codex': {
+          const { setupCodexConfigInteractive } = await import('../core/codex-sdk-setup.js')
+          await setupCodexConfigInteractive()
           break
         }
         case 'github': {
@@ -165,7 +171,7 @@ const handleGlobalConfigSetting = async (): Promise<boolean | void> => {
   }
 }
 
-const runInteractiveSetup = async (name: 'trello' | 'openrouter' | 'gemini' | 'groq') => {
+const runInteractiveSetup = async (name: 'trello' | 'openrouter' | 'gemini' | 'groq' | 'codex') => {
   if (name === 'trello') {
     const { setupTrelloConfigInteractive } = await import('../core/trello-setup.js')
     const trelloSetupSuccess = setupTrelloConfigInteractive()
@@ -195,6 +201,17 @@ const runInteractiveSetup = async (name: 'trello' | 'openrouter' | 'gemini' | 'g
       log.success('Groq integration configured!')
     } else {
       log.warn('Groq setup failed or cancelled.')
+    }
+    return
+  }
+
+  if (name === 'codex') {
+    const { setupCodexConfigInteractive } = await import('../core/codex-sdk-setup.js')
+    const codexSetupSuccess = await setupCodexConfigInteractive()
+    if (codexSetupSuccess) {
+      log.success('Codex integration configured!')
+    } else {
+      log.warn('Codex setup failed or cancelled.')
     }
     return
   }
@@ -663,6 +680,70 @@ const syncGroqModels = async (): Promise<void> => {
   }
 }
 
+// Sync Codex models (fetch from SDK & persist user favorites)
+const syncCodexModels = async (): Promise<void> => {
+  try {
+    let sdkModule: unknown = null
+    try {
+      sdkModule = await import('../api/codex-sdk.js')
+    } catch {
+      log.warn('Codex unavailable. Configure Codex first.')
+      return
+    }
+
+    const sdk = sdkModule as {
+      getCodexModels?: () => Promise<unknown>
+      isAvailable?: () => boolean
+    }
+
+    if (!sdk || typeof sdk.getCodexModels !== 'function') {
+      log.warn('Codex unavailable. Configure Codex first.')
+      return
+    }
+
+    if (typeof sdk.isAvailable === 'function' && !sdk.isAvailable()) {
+      const { setupCodexConfigInteractive } = await import('../core/codex-sdk-setup.js')
+      const setupOk = await setupCodexConfigInteractive()
+      if (!setupOk) return
+    }
+
+    const spinner = new ScrambleProgress()
+    spinner.start(['Fetching Codex models...'])
+    const models = (await sdk.getCodexModels()) as Array<{ label: string; value: string }> | null
+    spinner.stop()
+
+    if (!Array.isArray(models) || models.length === 0) {
+      log.warn('No Codex models found.')
+      return
+    }
+
+    const defaults = models.map((m) => m.value)
+
+    const selected = await multiSelect('Pick your favorite Codex models:', models, defaults)
+
+    if (!selected || selected.length === 0) {
+      log.info('No models selected. Sync cancelled.')
+      return
+    }
+
+    const simple = selected.map((val, idx) => {
+      const detail = models.find((m) => m.value === val)
+      return { label: `${idx + 1}. ${detail?.label ?? val}`, value: val }
+    })
+
+    const fsModule = await import('node:fs')
+    const outDir = path.join(process.cwd(), '.geeto')
+    await fsModule.promises.mkdir(outDir, { recursive: true })
+    const outFile = path.join(outDir, 'codex-model.json')
+    await fsModule.promises.writeFile(outFile, JSON.stringify(simple, null, 2))
+
+    log.success(`Saved ${simple.length} Codex model(s) to .geeto/codex-model.json`)
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : String(error)
+    log.warn(`Codex model sync failed: ${msg}`)
+  }
+}
+
 // Sync Copilot models (fetch from SDK & persist user favorites)
 const syncCopilotModels = async (): Promise<void> => {
   try {
@@ -761,6 +842,7 @@ const handleModelResetSetting = async (): Promise<boolean | void> => {
     { label: 'Gemini', value: 'gemini' },
     { label: 'OpenRouter', value: 'openrouter' },
     { label: 'Groq', value: 'groq' },
+    { label: 'Codex', value: 'codex' },
     { label: 'Back to settings menu', value: 'back' },
   ])
 
@@ -780,6 +862,9 @@ const handleModelResetSetting = async (): Promise<boolean | void> => {
     }
     if (resetChoice === 'groq') {
       await syncGroqModels()
+    }
+    if (resetChoice === 'codex') {
+      await syncCodexModels()
     }
 
     log.success('Model sync completed!')
@@ -801,6 +886,7 @@ const handleChangeModelSetting = async (): Promise<boolean | void> => {
     { label: 'GitHub Copilot', value: 'copilot' },
     { label: 'OpenRouter', value: 'openrouter' },
     { label: 'Groq', value: 'groq' },
+    { label: 'Codex', value: 'codex' },
     { label: 'Back to settings menu', value: 'back' },
   ]
 
@@ -811,7 +897,7 @@ const handleChangeModelSetting = async (): Promise<boolean | void> => {
   }
 
   const picked = await chooseModelForProvider(
-    chosenProv as 'gemini' | 'copilot' | 'openrouter' | 'groq',
+    chosenProv as 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'codex',
     undefined,
     'Back to settings menu'
   )
@@ -836,13 +922,14 @@ const handleChangeModelSetting = async (): Promise<boolean | void> => {
     targetBranch: '',
     currentBranch: '',
     timestamp: now,
-    aiProvider: chosenProv as 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'manual',
+    aiProvider: chosenProv as 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'codex' | 'manual',
     copilotModel: undefined,
     openrouterModel: undefined,
     geminiModel: undefined,
+    codexModel: undefined,
   }
 
-  base.aiProvider = chosenProv as 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'manual'
+  base.aiProvider = chosenProv as 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'codex' | 'manual'
 
   switch (chosenProv) {
     case 'copilot': {
@@ -868,6 +955,15 @@ const handleChangeModelSetting = async (): Promise<boolean | void> => {
       base.copilotModel = undefined
       base.openrouterModel = undefined
       base.geminiModel = undefined
+      base.codexModel = undefined
+      break
+    }
+    case 'codex': {
+      base.codexModel = picked as string
+      base.copilotModel = undefined
+      base.openrouterModel = undefined
+      base.geminiModel = undefined
+      base.groqModel = undefined
       break
     }
     default: {
@@ -879,8 +975,13 @@ const handleChangeModelSetting = async (): Promise<boolean | void> => {
 
   saveState(base)
   const providerLabel =
-    { gemini: 'Gemini', copilot: 'Copilot', openrouter: 'OpenRouter', groq: 'Groq' }[chosenProv] ??
-    chosenProv
+    {
+      gemini: 'Gemini',
+      copilot: 'Copilot',
+      openrouter: 'OpenRouter',
+      groq: 'Groq',
+      codex: 'Codex',
+    }[chosenProv] ?? chosenProv
   log.success(`Set ${providerLabel} model to: ${picked}`)
   // Done; do not go back to settings menu
   return false
@@ -1106,8 +1207,51 @@ const handleGroqSetting = async (): Promise<boolean | void> => {
   return false
 }
 
+const handleCodexSetting = async (): Promise<boolean | void> => {
+  const { hasCodexConfig } = await import('../utils/config.js')
+  const hasConfig = hasCodexConfig()
+
+  if (!hasConfig) {
+    await runInteractiveSetup('codex')
+    return false
+  }
+
+  const action = await select(
+    'Codex integration is already configured. What would you like to do?',
+    [
+      { label: 'Reconfigure (check local installation)', value: 'reconfigure' },
+      { label: 'Remove configuration', value: 'remove' },
+      { label: 'Back to settings menu', value: 'back' },
+    ]
+  )
+
+  switch (action) {
+    case 'reconfigure': {
+      log.info('Reconfiguring Codex integration...')
+      if (removeConfigFile('codex')) log.info('Cleared existing Codex configuration')
+      await runInteractiveSetup('codex')
+      log.success('Codex integration reconfigured!')
+      break
+    }
+    case 'remove': {
+      const confirmRemove = confirm('Are you sure you want to remove Codex configuration?')
+      if (!confirmRemove) return false
+      if (removeConfigFile('codex')) {
+        log.success('Codex configuration removed!')
+      } else {
+        log.info('No Codex configuration found to remove')
+      }
+      break
+    }
+    case 'back': {
+      return true
+    }
+  }
+  return false
+}
+
 const handleSaveGlobalAiConfig = (): boolean | void => {
-  const providers = ['gemini', 'openrouter', 'groq'] as const
+  const providers = ['gemini', 'openrouter', 'groq', 'codex'] as const
   const local = providers.filter((p) => isConfigLocal(p))
 
   if (local.length === 0) {
@@ -1139,7 +1283,7 @@ export const showSettingsMenu = async () => {
 
     const hasGlobalConfig = globalProviders().length > 0
     const hasLocalGeetoFolder = existsSync(configDirPath())
-    const hasLocalAiConfig = ['gemini', 'openrouter', 'groq'].some((p) => isConfigLocal(p))
+    const hasLocalAiConfig = ['gemini', 'openrouter', 'groq', 'codex'].some((p) => isConfigLocal(p))
 
     const menuOptions: Array<{ label: string; value: string; disabled?: boolean }> = [
       { label: 'Branch', value: '_branch', disabled: true },
@@ -1165,6 +1309,7 @@ export const showSettingsMenu = async () => {
       { label: '  Gemini', value: 'gemini' },
       { label: '  OpenRouter', value: 'openrouter' },
       { label: '  Groq', value: 'groq' },
+      { label: '  Codex', value: 'codex' },
       { label: '  Trello', value: 'trello' },
       { label: 'System', value: '_system', disabled: true },
       { label: '  Installation info', value: 'where' },
@@ -1244,6 +1389,12 @@ export const showSettingsMenu = async () => {
     }
     if (settingChoice === 'groq') {
       const back = await handleGroqSetting()
+      if (back) {
+        continue
+      }
+    }
+    if (settingChoice === 'codex') {
+      const back = await handleCodexSetting()
       if (back) {
         continue
       }

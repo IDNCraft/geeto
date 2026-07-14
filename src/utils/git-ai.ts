@@ -42,6 +42,9 @@ export function getAIProviderDisplayName(aiProvider: string): string {
     case 'groq': {
       return 'Groq'
     }
+    case 'codex': {
+      return 'Codex'
+    }
     default: {
       return 'Manual'
     }
@@ -62,6 +65,9 @@ export function getAIProviderShortName(aiProvider: string): string {
     }
     case 'groq': {
       return 'Groq'
+    }
+    case 'codex': {
+      return 'Codex'
     }
     default: {
       return 'Manual'
@@ -91,7 +97,8 @@ export async function generateBranchNameWithProvider(
   copilotModel?: CopilotModel,
   openrouterModel?: OpenRouterModel,
   geminiModel?: GeminiModel,
-  groqModel?: GroqModel
+  groqModel?: GroqModel,
+  codexModel?: string
 ): Promise<string | null> {
   switch (aiProvider) {
     case 'gemini': {
@@ -105,6 +112,10 @@ export async function generateBranchNameWithProvider(
     case 'groq': {
       const { generateBranchName } = await import('../api/groq.js')
       return generateBranchName(title, correction, groqModel)
+    }
+    case 'codex': {
+      const { generateBranchName } = await import('../api/codex.js')
+      return generateBranchName(title, correction, codexModel)
     }
     default: {
       const { generateBranchName } = await import('../api/openrouter.js')
@@ -121,7 +132,8 @@ export async function generateReleaseNotesWithProvider(
   copilotModel?: CopilotModel,
   openrouterModel?: OpenRouterModel,
   geminiModel?: GeminiModel,
-  groqModel?: GroqModel
+  groqModel?: GroqModel,
+  codexModel?: string
 ): Promise<string | null> {
   switch (aiProvider) {
     case 'gemini': {
@@ -135,6 +147,10 @@ export async function generateReleaseNotesWithProvider(
     case 'groq': {
       const { generateReleaseNotes } = await import('../api/groq.js')
       return generateReleaseNotes(commits, language, correction, groqModel)
+    }
+    case 'codex': {
+      const { generateReleaseNotes } = await import('../api/codex.js')
+      return generateReleaseNotes(commits, language, correction, codexModel)
     }
     default: {
       const { generateReleaseNotes } = await import('../api/openrouter.js')
@@ -150,7 +166,8 @@ export async function generateTextWithProvider(
   copilotModel?: CopilotModel,
   openrouterModel?: OpenRouterModel,
   geminiModel?: GeminiModel,
-  groqModel?: GroqModel
+  groqModel?: GroqModel,
+  codexModel?: string
 ): Promise<string | null> {
   switch (aiProvider) {
     case 'gemini': {
@@ -164,6 +181,10 @@ export async function generateTextWithProvider(
     case 'groq': {
       const { generateText } = await import('../api/groq.js')
       return generateText(prompt, groqModel)
+    }
+    case 'codex': {
+      const { generateText } = await import('../api/codex.js')
+      return generateText(prompt, codexModel)
     }
     default: {
       const { generateText } = await import('../api/openrouter.js')
@@ -180,7 +201,8 @@ export async function generateCommitMessageWithProvider(
   copilotModel?: CopilotModel,
   openrouterModel?: OpenRouterModel,
   geminiModel?: GeminiModel,
-  groqModel?: GroqModel
+  groqModel?: GroqModel,
+  codexModel?: string
 ): Promise<string | null> {
   switch (aiProvider) {
     case 'gemini': {
@@ -195,6 +217,10 @@ export async function generateCommitMessageWithProvider(
       const { generateCommitMessage } = await import('../api/groq.js')
       return generateCommitMessage(diff, correction, groqModel)
     }
+    case 'codex': {
+      const { generateCommitMessage } = await import('../api/codex.js')
+      return generateCommitMessage(diff, correction, codexModel)
+    }
     default: {
       const { generateCommitMessage } = await import('../api/openrouter.js')
       return generateCommitMessage(diff, correction, openrouterModel)
@@ -207,13 +233,13 @@ export async function generateCommitMessageWithProvider(
  */
 export async function interactiveAIFallback(
   currentSuffix: string | null,
-  aiProvider: 'gemini' | 'copilot' | 'openrouter' | 'groq',
+  aiProvider: 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'codex',
   model: CopilotModel | OpenRouterModel | GeminiModel | string,
   diff: string,
   correction: string,
   _currentBranch: string,
   updateModel: (
-    provider: 'gemini' | 'copilot' | 'openrouter' | 'groq',
+    provider: 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'codex',
     model?: CopilotModel | OpenRouterModel | GeminiModel | string
   ) => void,
   isCommit: boolean = false
@@ -478,6 +504,29 @@ export async function interactiveAIFallback(
           spinner.stop()
           break
         }
+        case 'codex': {
+          const codexApi = await import('../api/codex.js')
+          const { generateBranchName, generateCommitMessage } = codexApi
+          const spinner = new ScrambleProgress()
+          spinner.start([
+            `Retrying with Codex${getModelValue(currentModel) ? ` (${getModelValue(currentModel)})` : ''}`,
+          ])
+          if (isCommit) {
+            aiSuffix = await generateCommitMessage(
+              diff || 'Code changes',
+              correction,
+              currentModel as string
+            )
+          } else {
+            aiSuffix = await generateBranchName(
+              diff || 'Code changes',
+              correction,
+              currentModel as string
+            )
+          }
+          spinner.stop()
+          break
+        }
         default: {
           break
         }
@@ -627,10 +676,41 @@ export async function interactiveAIFallback(
         }
         continue
       }
+
+      if (aiProvider === 'codex') {
+        const codexApi = await import('../api/codex.js')
+        const { generateBranchName, generateCommitMessage, getCodexModels } = codexApi
+        const models = await getCodexModels()
+        const codexOptions = models.some((m) => m.value === 'back')
+          ? models
+          : [...models, { label: 'Back to try again model selection', value: 'back' }]
+        const chosen = await select('Choose a different Codex model:', codexOptions)
+        if (chosen === 'back') {
+          continue
+        }
+        currentModel = chosen
+        updateModel?.('codex', chosen)
+        const spinner = new ScrambleProgress()
+        spinner.start([
+          `${isCommit ? 'Generating commit message' : 'Generating branch name'} with Codex`,
+        ])
+        if (isCommit) {
+          aiSuffix = await generateCommitMessage(diff, correction, chosen)
+        } else {
+          aiSuffix = await generateBranchName(diff || 'Code changes', correction, chosen)
+        }
+        spinner.stop()
+        if (isTransientFailure(aiSuffix)) {
+          failedModels.add(chosen)
+        }
+        continue
+      }
     }
 
     if (pick === 'different-provider') {
-      const providers = ['gemini', 'copilot', 'openrouter', 'groq'].filter((p) => p !== aiProvider)
+      const providers = ['gemini', 'copilot', 'openrouter', 'groq', 'codex'].filter(
+        (p) => p !== aiProvider
+      )
       const providerOptions = providers.map((p) => ({
         label: getAIProviderDisplayName(p),
         value: p,
@@ -790,6 +870,39 @@ export async function interactiveAIFallback(
 
           break
         }
+        case 'codex': {
+          log.info(`Selected AI Provider: Codex`)
+          const { ensureAIProvider } = await import('../core/setup.js')
+          const codexReady = await ensureAIProvider('codex')
+          if (!codexReady) {
+            continue
+          }
+          const codexApi = await import('../api/codex.js')
+          const { generateBranchName, generateCommitMessage, getCodexModels } = codexApi
+          const models = await getCodexModels()
+          const codexOptions = models.some((m) => m.value === 'back')
+            ? models
+            : [...models, { label: 'Back to try again model selection', value: 'back' }]
+          const chosen = await select('Choose Codex model:', codexOptions)
+          if (chosen === 'back') {
+            continue
+          }
+          aiProvider = 'codex'
+          currentModel = chosen
+          updateModel?.('codex', chosen)
+          const spinner = new ScrambleProgress()
+          spinner.start([
+            `${isCommit ? 'Generating commit message' : 'Generating branch name'} with Codex`,
+          ])
+          if (isCommit) {
+            aiSuffix = await generateCommitMessage(diff, correction, chosen)
+          } else {
+            aiSuffix = await generateBranchName(diff, correction, chosen)
+          }
+          spinner.stop()
+
+          break
+        }
         // No default
       }
 
@@ -799,13 +912,14 @@ export async function interactiveAIFallback(
 }
 
 export async function getBranchNameFromDiffUsingProvider(
-  provider: 'gemini' | 'copilot' | 'openrouter' | 'groq',
+  provider: 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'codex',
   diff: string,
   correction?: string,
   copilotModel?: CopilotModel,
   openrouterModel?: OpenRouterModel,
   geminiModel?: GeminiModel,
-  groqModel?: GroqModel
+  groqModel?: GroqModel,
+  codexModel?: string
 ): Promise<string | null> {
   return generateBranchNameWithProvider(
     provider,
@@ -814,7 +928,8 @@ export async function getBranchNameFromDiffUsingProvider(
     copilotModel,
     openrouterModel,
     geminiModel,
-    groqModel
+    groqModel,
+    codexModel
   )
 }
 
@@ -823,7 +938,7 @@ export async function getBranchNameFromDiffUsingProvider(
  * Returns the chosen model value string or 'back' if the user went back, or undefined if setup failed.
  */
 export async function chooseModelForProvider(
-  provider: 'gemini' | 'copilot' | 'openrouter' | 'groq',
+  provider: 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'codex',
   prompt?: string,
   backLabel?: string
 ): Promise<string | 'back' | undefined> {
@@ -939,6 +1054,29 @@ export async function chooseModelForProvider(
       : [...models, { label: backLabel ?? 'Back', value: 'back' }]
     const { select } = await import('../cli/menu.js')
     const chosen = await select(prompt ?? 'Choose Groq model:', options)
+    return chosen as string | 'back'
+  }
+
+  if (provider === 'codex') {
+    log.info(`Selected AI Provider: Codex`)
+
+    const { ensureAIProvider } = await import('../core/setup.js')
+    const ready = await ensureAIProvider('codex')
+    if (!ready) return undefined
+
+    const codexApi = await import('../api/codex.js')
+    const models = await codexApi.getCodexModels()
+
+    if (models.length === 0) {
+      log.warn('No Codex models available.')
+      return undefined
+    }
+
+    const options = models.some((m) => m.value === 'back')
+      ? models
+      : [...models, { label: backLabel ?? 'Back', value: 'back' }]
+    const { select } = await import('../cli/menu.js')
+    const chosen = await select(prompt ?? 'Choose Codex model:', options)
     return chosen as string | 'back'
   }
 

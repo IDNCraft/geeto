@@ -7,9 +7,9 @@ import { DEFAULT_GEMINI_MODEL } from './config.js'
 import { log } from './logging.js'
 import { loadState, saveState } from './state.js'
 
-export type AIProvider = 'copilot' | 'gemini' | 'openrouter' | 'groq'
+export type AIProvider = 'copilot' | 'gemini' | 'openrouter' | 'groq' | 'codex'
 
-const AI_PROVIDERS = new Set<string>(['copilot', 'gemini', 'openrouter', 'groq'])
+const AI_PROVIDERS = new Set<string>(['copilot', 'gemini', 'openrouter', 'groq', 'codex'])
 
 /**
  * Resolve a persisted provider only when it is a real AI provider.
@@ -32,6 +32,7 @@ export const getModelForProvider = (
   if (provider === 'copilot') return state?.copilotModel
   if (provider === 'openrouter') return state?.openrouterModel
   if (provider === 'groq') return state?.groqModel
+  if (provider === 'codex') return state?.codexModel
   return state?.geminiModel ?? DEFAULT_GEMINI_MODEL
 }
 
@@ -55,6 +56,10 @@ export const updateModelInState = (
     }
     case 'groq': {
       state.groqModel = model
+      break
+    }
+    case 'codex': {
+      state.codexModel = model
       break
     }
     default: {

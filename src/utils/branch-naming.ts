@@ -18,11 +18,11 @@ export const handleBranchNaming = async (
   separator: '-' | '_',
   trelloCardId: string,
   currentBranch: string,
-  aiProvider: 'gemini' | 'copilot' | 'openrouter' | 'groq' = 'gemini',
-  model?: CopilotModel | OpenRouterModel | GeminiModel | GroqModel,
+  aiProvider: 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'codex' = 'gemini',
+  model?: CopilotModel | OpenRouterModel | GeminiModel | GroqModel | string,
   updateModel?: (
-    provider: 'gemini' | 'copilot' | 'openrouter' | 'groq',
-    model?: CopilotModel | OpenRouterModel | GeminiModel | GroqModel
+    provider: 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'codex',
+    model?: CopilotModel | OpenRouterModel | GeminiModel | GroqModel | string
   ) => void
 ): Promise<BranchNamingResult> => {
   const { askQuestion } = await import('../cli/input.js')
@@ -148,6 +148,11 @@ export const handleBranchNaming = async (
             aiSuffix = await generateBranchName(diff, correction, model as string)
             break
           }
+          case 'codex': {
+            const { generateBranchName } = await import('../api/codex.js')
+            aiSuffix = await generateBranchName(diff, correction, model as string)
+            break
+          }
         }
         spinner.stop()
       } catch (error) {
@@ -158,7 +163,7 @@ export const handleBranchNaming = async (
 
     if (!aiSuffix || isTransientAIFailure(aiSuffix) || isContextLimitFailure(aiSuffix)) {
       const safeUpdate = (
-        provider: 'gemini' | 'copilot' | 'openrouter' | 'groq',
+        provider: 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'codex',
         modelStr?: string
       ) => {
         if (updateModel) {

@@ -180,11 +180,12 @@ export const handleRepoSettings = async (): Promise<void> => {
     const readme = readReadme()
     if (readme) {
       // AI provider setup
-      let aiProvider: 'gemini' | 'copilot' | 'openrouter' | 'groq' = 'copilot'
+      let aiProvider: 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'codex' = 'copilot'
       let copilotModel: CopilotModel | undefined
       let openrouterModel: OpenRouterModel | undefined
       let geminiModel: GeminiModel | undefined
       let groqModel: string | undefined
+      let codexModel: string | undefined
 
       const savedState = loadState()
       const configuredProvider = getConfiguredAIProvider(savedState)
@@ -193,13 +194,15 @@ export const handleRepoSettings = async (): Promise<void> => {
         (savedState?.copilotModel ||
           savedState?.openrouterModel ||
           savedState?.geminiModel ||
-          savedState?.groqModel)
+          savedState?.groqModel ||
+          savedState?.codexModel)
       ) {
         aiProvider = configuredProvider
         copilotModel = savedState.copilotModel
         openrouterModel = savedState.openrouterModel
         geminiModel = savedState.geminiModel
         groqModel = savedState.groqModel
+        codexModel = savedState.codexModel
       } else {
         let providerChosen = false
         while (!providerChosen) {
@@ -209,7 +212,8 @@ export const handleRepoSettings = async (): Promise<void> => {
             { label: 'Gemini', value: 'gemini' },
             { label: 'OpenRouter', value: 'openrouter' },
             { label: 'Groq', value: 'groq' },
-          ])) as 'gemini' | 'copilot' | 'openrouter' | 'groq'
+            { label: 'Codex', value: 'codex' },
+          ])) as 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'codex'
 
           const chosen = await chooseModelForProvider(
             aiProvider,
@@ -235,6 +239,10 @@ export const handleRepoSettings = async (): Promise<void> => {
               groqModel = chosen
               break
             }
+            case 'codex': {
+              codexModel = chosen
+              break
+            }
           }
           providerChosen = true
         }
@@ -257,7 +265,9 @@ export const handleRepoSettings = async (): Promise<void> => {
               ? openrouterModel
               : aiProvider === 'groq'
                 ? groqModel
-                : geminiModel
+                : aiProvider === 'codex'
+                  ? codexModel
+                  : geminiModel
         const modelDisplay = getModelValue(currentModel)
         const aiSpinner = log.spinner()
         aiSpinner.start(
@@ -272,7 +282,8 @@ export const handleRepoSettings = async (): Promise<void> => {
           copilotModel,
           openrouterModel,
           geminiModel,
-          groqModel
+          groqModel,
+          codexModel
         )
 
         if (!aiResult) {
@@ -340,6 +351,10 @@ export const handleRepoSettings = async (): Promise<void> => {
                   groqModel = newModel
                   break
                 }
+                case 'codex': {
+                  codexModel = newModel
+                  break
+                }
               }
             }
             correction = ''
@@ -352,7 +367,8 @@ export const handleRepoSettings = async (): Promise<void> => {
               { label: 'Gemini', value: 'gemini' },
               { label: 'OpenRouter', value: 'openrouter' },
               { label: 'Groq', value: 'groq' },
-            ])) as 'gemini' | 'copilot' | 'openrouter' | 'groq'
+              { label: 'Codex', value: 'codex' },
+            ])) as 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'codex'
 
             const newModel = await chooseModelForProvider(aiProvider, undefined, 'Back')
             if (newModel && newModel !== 'back') {
@@ -361,6 +377,7 @@ export const handleRepoSettings = async (): Promise<void> => {
               openrouterModel = undefined
               geminiModel = undefined
               groqModel = undefined
+              codexModel = undefined
               switch (aiProvider) {
                 case 'gemini': {
                   geminiModel = newModel as GeminiModel
@@ -376,6 +393,10 @@ export const handleRepoSettings = async (): Promise<void> => {
                 }
                 case 'groq': {
                   groqModel = newModel
+                  break
+                }
+                case 'codex': {
+                  codexModel = newModel
                   break
                 }
               }

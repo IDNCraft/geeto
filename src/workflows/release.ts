@@ -293,11 +293,12 @@ export const handleRelease = async (): Promise<void> => {
 
     // Read saved AI config from state
     const savedState = loadState()
-    let aiProvider: 'gemini' | 'copilot' | 'openrouter' | 'groq' = 'copilot'
+    let aiProvider: 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'codex' = 'copilot'
     let copilotModel: CopilotModel | undefined
     let openrouterModel: OpenRouterModel | undefined
     let geminiModel: GeminiModel | undefined
     let groqModel: string | undefined
+    let codexModel: string | undefined
 
     // Use saved provider/model if available, otherwise ask user
     const configuredProvider = getConfiguredAIProvider(savedState)
@@ -306,13 +307,15 @@ export const handleRelease = async (): Promise<void> => {
       (savedState?.copilotModel ||
         savedState?.openrouterModel ||
         savedState?.geminiModel ||
-        savedState?.groqModel)
+        savedState?.groqModel ||
+        savedState?.codexModel)
     ) {
       aiProvider = configuredProvider
       copilotModel = savedState.copilotModel
       openrouterModel = savedState.openrouterModel
       geminiModel = savedState.geminiModel
       groqModel = savedState.groqModel
+      codexModel = savedState.codexModel
     } else {
       // No saved config — ask user to pick provider + model
       let providerChosen = false
@@ -322,7 +325,8 @@ export const handleRelease = async (): Promise<void> => {
           { label: 'Gemini', value: 'gemini' },
           { label: 'OpenRouter', value: 'openrouter' },
           { label: 'Groq', value: 'groq' },
-        ])) as 'gemini' | 'copilot' | 'openrouter' | 'groq'
+          { label: 'Codex', value: 'codex' },
+        ])) as 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'codex'
 
         const chosen = await chooseModelForProvider(
           aiProvider,
@@ -344,6 +348,14 @@ export const handleRelease = async (): Promise<void> => {
             openrouterModel = chosen as OpenRouterModel
             break
           }
+          case 'groq': {
+            groqModel = chosen
+            break
+          }
+          case 'codex': {
+            codexModel = chosen
+            break
+          }
         }
         providerChosen = true
       }
@@ -362,7 +374,9 @@ export const handleRelease = async (): Promise<void> => {
             ? openrouterModel
             : aiProvider === 'groq'
               ? groqModel
-              : geminiModel
+              : aiProvider === 'codex'
+                ? codexModel
+                : geminiModel
       const modelDisplay = getModelValue(currentModel)
       spinner.start([
         `Generating release notes with ${getAIProviderShortName(aiProvider)}${modelDisplay ? ` (${modelDisplay})` : ''}`,
@@ -376,7 +390,8 @@ export const handleRelease = async (): Promise<void> => {
         copilotModel,
         openrouterModel,
         geminiModel,
-        groqModel
+        groqModel,
+        codexModel
       )
 
       const failed = !result || isContextLimitFailure(result) || isTransientAIFailure(result)
@@ -413,6 +428,10 @@ export const handleRelease = async (): Promise<void> => {
                 groqModel = newModel
                 break
               }
+              case 'codex': {
+                codexModel = newModel
+                break
+              }
             }
           }
           correction = undefined
@@ -425,12 +444,14 @@ export const handleRelease = async (): Promise<void> => {
             { label: 'Gemini', value: 'gemini' },
             { label: 'OpenRouter', value: 'openrouter' },
             { label: 'Groq', value: 'groq' },
-          ])) as 'gemini' | 'copilot' | 'openrouter' | 'groq'
+            { label: 'Codex', value: 'codex' },
+          ])) as 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'codex'
           aiProvider = prov
           copilotModel = undefined
           openrouterModel = undefined
           geminiModel = undefined
           groqModel = undefined
+          codexModel = undefined
           const newModel = await chooseModelForProvider(aiProvider, undefined, 'Back')
           if (newModel && newModel !== 'back') {
             switch (aiProvider) {
@@ -448,6 +469,10 @@ export const handleRelease = async (): Promise<void> => {
               }
               case 'groq': {
                 groqModel = newModel
+                break
+              }
+              case 'codex': {
+                codexModel = newModel
                 break
               }
             }
@@ -542,6 +567,10 @@ export const handleRelease = async (): Promise<void> => {
                 groqModel = newModel
                 break
               }
+              case 'codex': {
+                codexModel = newModel
+                break
+              }
             }
           }
           correction = undefined
@@ -553,12 +582,14 @@ export const handleRelease = async (): Promise<void> => {
             { label: 'Gemini', value: 'gemini' },
             { label: 'OpenRouter', value: 'openrouter' },
             { label: 'Groq', value: 'groq' },
-          ])) as 'gemini' | 'copilot' | 'openrouter' | 'groq'
+            { label: 'Codex', value: 'codex' },
+          ])) as 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'codex'
           aiProvider = prov
           copilotModel = undefined
           openrouterModel = undefined
           geminiModel = undefined
           groqModel = undefined
+          codexModel = undefined
           const newModel = await chooseModelForProvider(aiProvider, undefined, 'Back')
           if (newModel && newModel !== 'back') {
             switch (aiProvider) {
@@ -576,6 +607,10 @@ export const handleRelease = async (): Promise<void> => {
               }
               case 'groq': {
                 groqModel = newModel
+                break
+              }
+              case 'codex': {
+                codexModel = newModel
                 break
               }
             }

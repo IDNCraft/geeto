@@ -13,17 +13,19 @@ import { select } from '../cli/menu.js'
 import { chooseModelForProvider } from '../utils/git-ai.js'
 
 export const handleAIProviderSelection = async (): Promise<{
-  aiProvider: 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'manual'
+  aiProvider: 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'codex' | 'manual'
   copilotModel?: CopilotModel
   openrouterModel?: OpenRouterModel
   geminiModel?: GeminiModel
   groqModel?: GroqModel
+  codexModel?: string
 }> => {
-  let aiProvider: 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'manual'
+  let aiProvider: 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'codex' | 'manual'
   let copilotModel: CopilotModel | undefined
   let openrouterModel: OpenRouterModel | undefined
   let geminiModel: GeminiModel | undefined
   let groqModel: GroqModel | undefined
+  let codexModel: string | undefined
 
   // AI provider selection loop
   while (true) {
@@ -32,8 +34,9 @@ export const handleAIProviderSelection = async (): Promise<{
       { label: 'GitHub Copilot', value: 'copilot' },
       { label: 'OpenRouter', value: 'openrouter' },
       { label: 'Groq', value: 'groq' },
+      { label: 'Codex', value: 'codex' },
       { label: 'Manual', value: 'manual' },
-    ])) as 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'manual'
+    ])) as 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'codex' | 'manual'
 
     // Setup the selected AI provider using centralized helper where possible
     if (aiProvider === 'manual') {
@@ -42,7 +45,7 @@ export const handleAIProviderSelection = async (): Promise<{
     }
 
     const chosen = await chooseModelForProvider(
-      aiProvider as 'gemini' | 'copilot' | 'openrouter' | 'groq',
+      aiProvider as 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'codex',
       undefined,
       'Back to AI provider menu'
     )
@@ -77,6 +80,10 @@ export const handleAIProviderSelection = async (): Promise<{
 
         break
       }
+      case 'codex': {
+        codexModel = chosen
+        break
+      }
       // No default
     }
 
@@ -84,5 +91,5 @@ export const handleAIProviderSelection = async (): Promise<{
     break
   }
 
-  return { aiProvider, copilotModel, openrouterModel, geminiModel, groqModel }
+  return { aiProvider, copilotModel, openrouterModel, geminiModel, groqModel, codexModel }
 }

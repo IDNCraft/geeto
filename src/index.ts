@@ -3,6 +3,7 @@
  * Geeto - Git flow automation CLI tool with AI-powered branch naming
  * Main entry point - delegates to modular workflows via command registry
  */
+import { checkForUpdate, getVersionHint, promptUpdate } from './utils/update-checker.js'
 import { VERSION } from './version.js'
 
 // ─── Command Registry ────────────────────────────────────────────────
@@ -281,6 +282,14 @@ const COMMAND_REGISTRY: CommandEntry[] = [
     handler: 'handleWhereInstalled',
     errorLabel: 'Where',
   },
+  // Update
+  {
+    flag: '--update',
+    alias: '-up',
+    module: './workflows/update.js',
+    handler: 'handleUpdate',
+    errorLabel: 'Update',
+  },
 ]
 
 /** Flags that set the `startAt` step for the main workflow */
@@ -485,6 +494,9 @@ function showHelpMessage(): void {
   console.log(`    ${C}     --where${R}              Show installation path & method`)
   console.log(`    ${C}     --uninstall${R}          Uninstall geeto CLI`)
   console.log('')
+  console.log(`  ${B}UPDATE${R}`)
+  console.log(`    ${C}-up, --update${R}             Update geeto to the latest version`)
+  console.log('')
 }
 
 // ─── Command Execution ───────────────────────────────────────────────
@@ -526,6 +538,7 @@ const MODULE_LOADERS: Record<
   './core/github-setup.js': () => import('./core/github-setup.js'),
   './core/gitlab-setup.js': () => import('./core/gitlab-setup.js'),
   './workflows/doctor.js': () => import('./workflows/doctor.js'),
+  './workflows/update.js': () => import('./workflows/update.js'),
 }
 
 async function handleDryRunSetup(args: ParsedArgs): Promise<void> {
@@ -558,9 +571,15 @@ async function handleDryRunSetup(args: ParsedArgs): Promise<void> {
 }
 
 async function executeCommand(args: ParsedArgs): Promise<void> {
-  // 1. Version (instant, no imports)
+  // 1. Version with update hint (like clopen -v)
   if (args.showVersion) {
     console.log(`Geeto v${VERSION}`)
+    try {
+      const hint = await getVersionHint()
+      if (hint) console.log(hint)
+    } catch {
+      /* silent */
+    }
     process.exit(0)
   }
 
@@ -570,12 +589,24 @@ async function executeCommand(args: ParsedArgs): Promise<void> {
     process.exit(0)
   }
 
-  // 3. Dry-run mode setup (must run before other commands)
+  // 3. Silent update check (skipped for --version/--help/--uninstall/--update)
+  if (!args.activeFlags.has('--uninstall') && !args.activeFlags.has('--update')) {
+    try {
+      const updateInfo = await checkForUpdate()
+      if (updateInfo?.hasUpdate) {
+        await promptUpdate(updateInfo)
+      }
+    } catch {
+      /* silently ignore update check errors */
+    }
+  }
+
+  // 5. Dry-run mode setup (must run before other commands)
   if (args.dryRunMode) {
     await handleDryRunSetup(args)
   }
 
-  // 4. Registry commands — first match wins
+  // 6. Registry commands — first match wins
   for (const cmd of COMMAND_REGISTRY) {
     if (args.activeFlags.has(cmd.flag)) {
       try {
@@ -594,7 +625,7 @@ async function executeCommand(args: ParsedArgs): Promise<void> {
     }
   }
 
-  // 6. Default: run main workflow
+  // 7. Default: run main workflow
   const { main } = await import('./workflows/main.js')
   main({
     startAt: args.startAt,

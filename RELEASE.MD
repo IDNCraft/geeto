@@ -1,5 +1,20 @@
 # Releases
 
+## v0.12.0 — July 14, 2026
+
+### What's New?
+
+#### New Features
+
+- Added the ability to configure the style and tone of commit messages in settings
+
+#### Other Improvements
+
+- Improved instructions in the readme, including updated uninstall and update commands, as well as clearer documentation for working with branches
+- Added missing blank line separators in the rules section for better readability
+
+---
+
 ## v0.11.0 — July 14, 2026
 
 ### What's New?

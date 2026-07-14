@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.12.0](https://github.com/rust142/geeto/compare/v0.11.0...v0.12.0) (2026-07-14)
+
+### Features
+
+* feat(settings): add configurable commit message style and tone ([d4585be](https://github.com/rust142/geeto/commit/d4585be))
+
+### Other Changes
+
+* docs(prompts): add missing blank line separator in rules section ([82edf0d](https://github.com/rust142/geeto/commit/82edf0d))
+* docs(readme): clarify uninstall/update commands and enhance branch docs ([b4764f1](https://github.com/rust142/geeto/commit/b4764f1))
+
 ## [0.11.0](https://github.com/rust142/geeto/compare/v0.10.1...v0.11.0) (2026-07-14)
 
 ### Features

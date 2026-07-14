@@ -113,25 +113,54 @@ interface ShellInfo {
   rcFile: string
 }
 
-const detectShell = (): ShellInfo => {
-  if (isWindows()) {
-    // PowerShell profile
-    const psProfile = path.join(
-      os.homedir(),
-      'Documents',
-      'PowerShell',
-      'Microsoft.PowerShell_profile.ps1'
-    )
-    return { type: 'powershell', rcFile: psProfile }
+const getPowerShellProfile = (): string => {
+  // Try pwsh first
+  try {
+    const out = execSync('pwsh -NoProfile -Command "$PROFILE"', {
+      encoding: 'utf8',
+      stdio: ['pipe', 'pipe', 'pipe'],
+    }).trim()
+    if (out) return out
+  } catch {
+    // Ignore
   }
 
+  // Try powershell.exe
+  try {
+    const out = execSync('powershell.exe -NoProfile -Command "$PROFILE"', {
+      encoding: 'utf8',
+      stdio: ['pipe', 'pipe', 'pipe'],
+    }).trim()
+    if (out) return out
+  } catch {
+    // Ignore
+  }
+
+  // Fallback guess: try WindowsPowerShell first (more common default), then PowerShell
+  const home = os.homedir()
+  const winPS = path.join(
+    home,
+    'Documents',
+    'WindowsPowerShell',
+    'Microsoft.PowerShell_profile.ps1'
+  )
+  if (fs.existsSync(winPS)) return winPS
+
+  const psCore = path.join(home, 'Documents', 'PowerShell', 'Microsoft.PowerShell_profile.ps1')
+  if (fs.existsSync(psCore)) return psCore
+
+  // If neither exists, default to WindowsPowerShell
+  return winPS
+}
+
+const detectShell = (): ShellInfo => {
   const shell = process.env.SHELL ?? ''
   const home = os.homedir()
 
   if (shell.includes('zsh')) {
     return { type: 'zsh', rcFile: path.join(home, '.zshrc') }
   }
-  if (shell.includes('bash')) {
+  if (shell.includes('bash') || shell.includes('sh')) {
     // Prefer .bashrc, fallback to .bash_profile on macOS
     const bashrc = path.join(home, '.bashrc')
     if (fs.existsSync(bashrc)) return { type: 'bash', rcFile: bashrc }
@@ -142,6 +171,10 @@ const detectShell = (): ShellInfo => {
       type: 'fish',
       rcFile: path.join(home, '.config', 'fish', 'config.fish'),
     }
+  }
+
+  if (isWindows()) {
+    return { type: 'powershell', rcFile: getPowerShellProfile() }
   }
 
   // Fallback: check if common rc files exist

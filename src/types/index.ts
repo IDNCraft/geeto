@@ -18,11 +18,12 @@ export interface GeetoState {
   targetBranch: string
   currentBranch: string
   timestamp: string
-  aiProvider?: 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'manual'
+  aiProvider?: 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'codex' | 'manual'
   copilotModel?: CopilotModel
   openrouterModel?: OpenRouterModel
   geminiModel?: GeminiModel
   groqModel?: GroqModel
+  codexModel?: string
   // Flags for explicitly skipped steps
   skippedCommit?: boolean
   skippedPush?: boolean

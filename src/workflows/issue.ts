@@ -29,7 +29,7 @@ import { loadState } from '../utils/state.js'
  */
 const callAIForIssue = async (
   description: string,
-  provider: 'copilot' | 'gemini' | 'openrouter' | 'groq',
+  provider: 'copilot' | 'gemini' | 'openrouter' | 'groq' | 'codex',
   model: string | undefined,
   correction?: string
 ): Promise<{ title: string; body: string } | null> => {
@@ -51,6 +51,7 @@ const callAIForIssue = async (
       model as CopilotModel,
       model as OpenRouterModel,
       (model as GeminiModel) ?? 'gemini-2.5-flash',
+      model,
       model
     )
     spinner.stop()

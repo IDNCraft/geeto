@@ -31,7 +31,7 @@ import { ScrambleProgress } from '../utils/scramble.js'
 import { saveState } from '../utils/state.js'
 
 export const getDefaultCommitTool = (
-  aiProvider: 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'manual'
+  aiProvider: 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'codex' | 'manual'
 ): string => {
   switch (aiProvider) {
     case 'gemini': {
@@ -45,6 +45,9 @@ export const getDefaultCommitTool = (
     }
     case 'groq': {
       return 'groq'
+    }
+    case 'codex': {
+      return 'codex'
     }
     default: {
       return 'manual'
@@ -339,6 +342,7 @@ export const handleCommitWorkflow = async (
     | 'copilot'
     | 'openrouter'
     | 'groq'
+    | 'codex'
     | 'manual'
   let selectedTool = getDefaultCommitTool(aiProvider)
 
@@ -347,6 +351,7 @@ export const handleCommitWorkflow = async (
     { label: 'GitHub Copilot', value: 'copilot' },
     { label: 'OpenRouter', value: 'openrouter' },
     { label: 'Groq', value: 'groq' },
+    { label: 'Codex', value: 'codex' },
     { label: 'Manual commit', value: 'manual' },
   ]
 
@@ -360,12 +365,26 @@ export const handleCommitWorkflow = async (
     modelName = state.copilotModel
   } else if (aiProvider === 'openrouter' && state.openrouterModel) {
     modelName = state.openrouterModel
-  } else if (aiProvider === 'groq') {
-    modelName = state.groqModel ?? ''
-  } else if (aiProvider === 'gemini') {
-    // prefer persisted state selection, otherwise fall back to default
-    modelName = state.geminiModel ?? DEFAULT_GEMINI_MODEL
-  }
+  } else
+    switch (aiProvider) {
+      case 'groq': {
+        modelName = state.groqModel ?? ''
+
+        break
+      }
+      case 'codex': {
+        modelName = state.codexModel ?? ''
+
+        break
+      }
+      case 'gemini': {
+        // prefer persisted state selection, otherwise fall back to default
+        modelName = state.geminiModel ?? DEFAULT_GEMINI_MODEL
+
+        break
+      }
+      // No default
+    }
 
   // If not manual, ask whether to use AI provider for commit; otherwise skip to manual flow
   let useAutoTool = false
@@ -395,10 +414,10 @@ export const handleCommitWorkflow = async (
   console.log('')
 
   // Use chosen provider; prompt model and allow going back to provider selection.
-  let effectiveProvider: 'gemini' | 'copilot' | 'openrouter' | 'groq' =
+  let effectiveProvider: 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'codex' =
     aiProvider === 'manual'
       ? 'gemini'
-      : (aiProvider as 'gemini' | 'copilot' | 'openrouter' | 'groq')
+      : (aiProvider as 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'codex')
   if (selectedTool !== 'manual') {
     // Determine if model prompt is needed (skip if default & persisted)
     const defaultTool = getDefaultCommitTool(aiProvider)
@@ -418,6 +437,9 @@ export const handleCommitWorkflow = async (
         case 'groq': {
           return !!state.groqModel
         }
+        case 'codex': {
+          return !!state.codexModel
+        }
         default: {
           return false
         }
@@ -431,7 +453,7 @@ export const handleCommitWorkflow = async (
       let providerPick: string = selectedTool
 
       while (true) {
-        effectiveProvider = providerPick as 'gemini' | 'copilot' | 'openrouter' | 'groq'
+        effectiveProvider = providerPick as 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'codex'
         state.aiProvider = effectiveProvider
         saveState(state)
 
@@ -472,6 +494,10 @@ export const handleCommitWorkflow = async (
             state.groqModel = chosenModel
             break
           }
+          case 'codex': {
+            state.codexModel = chosenModel
+            break
+          }
           default: {
             break
           }
@@ -482,7 +508,7 @@ export const handleCommitWorkflow = async (
       // end while
     } else {
       // no interactive model prompt required — persist chosen provider and continue
-      state.aiProvider = selectedTool as 'gemini' | 'copilot' | 'openrouter' | 'groq'
+      state.aiProvider = selectedTool as 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'codex'
       saveState(state)
     }
   }
@@ -496,11 +522,11 @@ export const handleCommitWorkflow = async (
 
     const spinner = new ScrambleProgress()
     try {
-      let currentProvider: 'gemini' | 'copilot' | 'openrouter' | 'groq' | undefined
+      let currentProvider: 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'codex' | undefined
       if (state.aiProvider && state.aiProvider !== 'manual') {
         currentProvider = state.aiProvider
       } else {
-        currentProvider = aiProvider as 'gemini' | 'copilot' | 'openrouter' | 'groq'
+        currentProvider = aiProvider as 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'codex'
       }
 
       switch (currentProvider) {
@@ -519,8 +545,18 @@ export const handleCommitWorkflow = async (
 
           break
         }
-        default: {
+        case 'codex': {
+          currentModel = state.codexModel ?? ''
+
+          break
+        }
+        case 'gemini': {
           currentModel = state.geminiModel ?? DEFAULT_GEMINI_MODEL
+          break
+        }
+        default: {
+          currentModel = undefined
+          break
         }
       }
 
@@ -535,7 +571,8 @@ export const handleCommitWorkflow = async (
         state.copilotModel as CopilotModel,
         state.openrouterModel as OpenRouterModel,
         state.geminiModel as GeminiModel,
-        state.groqModel
+        state.groqModel,
+        state.codexModel
       )
       spinner.stop()
     } catch {
@@ -582,6 +619,8 @@ export const handleCommitWorkflow = async (
             directModelName = state.openrouterModel as string
           } else if (state.aiProvider === 'groq' && state.groqModel) {
             directModelName = state.groqModel
+          } else if (state.aiProvider === 'codex' && state.codexModel) {
+            directModelName = state.codexModel
           } else if (state.aiProvider === 'gemini') {
             directModelName = (state.geminiModel as string) ?? DEFAULT_GEMINI_MODEL
           }
@@ -628,6 +667,11 @@ export const handleCommitWorkflow = async (
                 aiResult = await generateCommitMessage(diff, correction, state.groqModel)
                 break
               }
+              case 'codex': {
+                const { generateCommitMessage } = await import('../api/codex.js')
+                aiResult = await generateCommitMessage(diff, correction, state.codexModel)
+                break
+              }
               default: {
                 aiResult = null
                 break
@@ -651,6 +695,7 @@ export const handleCommitWorkflow = async (
           | 'copilot'
           | 'openrouter'
           | 'groq'
+          | 'codex'
         let modelChoice: CopilotModel | OpenRouterModel | GeminiModel | string
         switch (currentProv) {
           case 'copilot': {
@@ -668,8 +713,18 @@ export const handleCommitWorkflow = async (
 
             break
           }
-          default: {
+          case 'codex': {
+            modelChoice = state.codexModel ?? ''
+
+            break
+          }
+          case 'gemini': {
             modelChoice = (state.geminiModel as GeminiModel) ?? DEFAULT_GEMINI_MODEL
+            break
+          }
+          default: {
+            modelChoice = ''
+            break
           }
         }
 
@@ -680,17 +735,19 @@ export const handleCommitWorkflow = async (
           diff,
           correction,
           state.currentBranch,
-          (provider: 'gemini' | 'copilot' | 'openrouter' | 'groq', model?: string) => {
+          (provider: 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'codex', model?: string) => {
             log.info(`AI provider switched to: ${getAIProviderShortName(provider)}`)
             state.aiProvider = provider
 
             switch (provider) {
               case 'copilot': {
                 state.copilotModel = model as CopilotModel
+                state.codexModel = undefined
                 break
               }
               case 'openrouter': {
                 state.openrouterModel = model as OpenRouterModel
+                state.codexModel = undefined
                 break
               }
               case 'gemini': {
@@ -698,10 +755,16 @@ export const handleCommitWorkflow = async (
                 if (model && typeof model === 'string') {
                   state.geminiModel = model as GeminiModel
                 }
+                state.codexModel = undefined
                 break
               }
               case 'groq': {
                 state.groqModel = model
+                state.codexModel = undefined
+                break
+              }
+              case 'codex': {
+                state.codexModel = model
                 break
               }
               default: {
@@ -759,12 +822,20 @@ export const handleCommitWorkflow = async (
             modelParam = state.openrouterModel as unknown as string
             break
           }
+          case 'gemini': {
+            modelParam = (state.geminiModel as unknown as string) ?? DEFAULT_GEMINI_MODEL
+            break
+          }
           case 'groq': {
             modelParam = state.groqModel
             break
           }
+          case 'codex': {
+            modelParam = state.codexModel
+            break
+          }
           default: {
-            modelParam = (state.geminiModel as unknown as string) ?? DEFAULT_GEMINI_MODEL
+            modelParam = undefined
             break
           }
         }
@@ -886,6 +957,7 @@ export const handleCommitWorkflow = async (
             { label: 'GitHub Copilot', value: 'copilot' },
             { label: 'OpenRouter', value: 'openrouter' },
             { label: 'Groq', value: 'groq' },
+            { label: 'Codex', value: 'codex' },
             { label: 'Back to suggested commit selection', value: 'back' },
           ])
 
@@ -897,7 +969,7 @@ export const handleCommitWorkflow = async (
 
           // Use centralized helper to choose model for the provider
           const chosenModel = await chooseModelForProvider(
-            prov as 'gemini' | 'copilot' | 'openrouter' | 'groq',
+            prov as 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'codex',
             'Choose model:',
             'Back to suggested commit selection'
           )
@@ -914,13 +986,14 @@ export const handleCommitWorkflow = async (
             continue
           }
 
-          state.aiProvider = prov as 'gemini' | 'copilot' | 'openrouter' | 'groq'
+          state.aiProvider = prov as 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'codex'
           switch (prov) {
             case 'copilot': {
               state.copilotModel = chosenModel as unknown as CopilotModel
               state.openrouterModel = undefined
               state.geminiModel = undefined
               state.groqModel = undefined
+              state.codexModel = undefined
               break
             }
             case 'openrouter': {
@@ -928,6 +1001,7 @@ export const handleCommitWorkflow = async (
               state.copilotModel = undefined
               state.geminiModel = undefined
               state.groqModel = undefined
+              state.codexModel = undefined
               break
             }
             case 'gemini': {
@@ -935,6 +1009,7 @@ export const handleCommitWorkflow = async (
               state.copilotModel = undefined
               state.openrouterModel = undefined
               state.groqModel = undefined
+              state.codexModel = undefined
               break
             }
             case 'groq': {
@@ -942,6 +1017,15 @@ export const handleCommitWorkflow = async (
               state.copilotModel = undefined
               state.openrouterModel = undefined
               state.geminiModel = undefined
+              state.codexModel = undefined
+              break
+            }
+            case 'codex': {
+              state.codexModel = chosenModel
+              state.copilotModel = undefined
+              state.openrouterModel = undefined
+              state.geminiModel = undefined
+              state.groqModel = undefined
               break
             }
           }
@@ -958,12 +1042,14 @@ export const handleCommitWorkflow = async (
             | 'copilot'
             | 'openrouter'
             | 'groq'
+            | 'codex'
             | 'manual'
           const providerKey = (currentProv === 'manual' ? 'gemini' : currentProv) as
             | 'gemini'
             | 'copilot'
             | 'openrouter'
             | 'groq'
+            | 'codex'
           const chosen = await chooseModelForProvider(
             providerKey,
             'Choose model:',
@@ -981,20 +1067,29 @@ export const handleCommitWorkflow = async (
           switch (currentProv) {
             case 'copilot': {
               state.copilotModel = chosen as unknown as CopilotModel
+              state.codexModel = undefined
               break
             }
             case 'openrouter': {
               state.openrouterModel = chosen as unknown as OpenRouterModel
+              state.codexModel = undefined
               break
             }
             case 'gemini': {
               state.geminiModel = chosen as unknown as GeminiModel
               state.copilotModel = undefined
               state.openrouterModel = undefined
+              state.groqModel = undefined
+              state.codexModel = undefined
               break
             }
             case 'groq': {
               state.groqModel = chosen
+              state.codexModel = undefined
+              break
+            }
+            case 'codex': {
+              state.codexModel = chosen
               break
             }
             default: {

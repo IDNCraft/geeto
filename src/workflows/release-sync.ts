@@ -129,11 +129,12 @@ export const handleSyncReleases = async (): Promise<void> => {
   // AI setup if needed
   let useAI = notesMode === 'ai'
   let language: 'en' | 'id' = 'en'
-  let aiProvider: 'gemini' | 'copilot' | 'openrouter' | 'groq' = 'copilot'
+  let aiProvider: 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'codex' = 'copilot'
   let copilotModel: CopilotModel | undefined
   let openrouterModel: OpenRouterModel | undefined
   let geminiModel: GeminiModel | undefined
   let groqModel: string | undefined
+  let codexModel: string | undefined
 
   if (useAI) {
     language = (await select('Release notes language:', [
@@ -149,13 +150,15 @@ export const handleSyncReleases = async (): Promise<void> => {
       (savedState?.copilotModel ||
         savedState?.openrouterModel ||
         savedState?.geminiModel ||
-        savedState?.groqModel)
+        savedState?.groqModel ||
+        savedState?.codexModel)
     ) {
       aiProvider = configuredProvider
       copilotModel = savedState.copilotModel
       openrouterModel = savedState.openrouterModel
       geminiModel = savedState.geminiModel
       groqModel = savedState.groqModel
+      codexModel = savedState.codexModel
     } else {
       let providerChosen = false
       while (!providerChosen) {
@@ -164,7 +167,8 @@ export const handleSyncReleases = async (): Promise<void> => {
           { label: 'Gemini', value: 'gemini' },
           { label: 'OpenRouter', value: 'openrouter' },
           { label: 'Groq', value: 'groq' },
-        ])) as 'gemini' | 'copilot' | 'openrouter' | 'groq'
+          { label: 'Codex', value: 'codex' },
+        ])) as 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'codex'
 
         const chosen = await chooseModelForProvider(
           aiProvider,
@@ -188,6 +192,10 @@ export const handleSyncReleases = async (): Promise<void> => {
           }
           case 'groq': {
             groqModel = chosen
+            break
+          }
+          case 'codex': {
+            codexModel = chosen
             break
           }
         }
@@ -239,7 +247,9 @@ export const handleSyncReleases = async (): Promise<void> => {
             ? openrouterModel
             : aiProvider === 'groq'
               ? groqModel
-              : geminiModel
+              : aiProvider === 'codex'
+                ? codexModel
+                : geminiModel
       const modelDisplay = getModelValue(currentModel)
       aiSpinner.start([
         `Generating release notes with ${getAIProviderShortName(aiProvider)}${modelDisplay ? ` (${modelDisplay})` : ''}`,
@@ -253,7 +263,8 @@ export const handleSyncReleases = async (): Promise<void> => {
         copilotModel,
         openrouterModel,
         geminiModel,
-        groqModel
+        groqModel,
+        codexModel
       )
 
       if (aiResult) {

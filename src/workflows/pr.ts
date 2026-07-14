@@ -122,7 +122,7 @@ const callAIForPR = async (
   commits: string[],
   branchName: string,
   baseBranch: string,
-  provider: 'copilot' | 'gemini' | 'openrouter' | 'groq',
+  provider: 'copilot' | 'gemini' | 'openrouter' | 'groq' | 'codex',
   model: string | undefined,
   correction?: string
 ): Promise<{ title: string; body: string } | null> => {
@@ -331,17 +331,18 @@ export const handleCreatePR = async (): Promise<void> => {
             { label: 'GitHub Copilot', value: 'copilot' },
             { label: 'OpenRouter', value: 'openrouter' },
             { label: 'Groq', value: 'groq' },
+            { label: 'Codex', value: 'codex' },
             { label: 'Back', value: 'back' },
           ])
           if (prov !== 'back') {
             const { chooseModelForProvider } = await import('../utils/git-ai.js')
             const chosen = await chooseModelForProvider(
-              prov as 'gemini' | 'copilot' | 'openrouter' | 'groq',
+              prov as 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'codex',
               'Choose model:',
               'Back'
             )
             if (chosen && chosen !== 'back') {
-              aiProvider = prov as 'copilot' | 'gemini' | 'openrouter' | 'groq'
+              aiProvider = prov as 'copilot' | 'gemini' | 'openrouter' | 'groq' | 'codex'
               currentModel = chosen
               if (state) {
                 state.aiProvider = aiProvider
@@ -360,8 +361,9 @@ export const handleCreatePR = async (): Promise<void> => {
         }
       }
 
-      prTitle = aiResult!.title
-      prBody = aiResult!.body
+      if (!aiResult) break
+      prTitle = aiResult.title
+      prBody = aiResult.body
       showAIPreview(prLabel, prTitle, prBody)
       log.info('Incorrect? check .geeto/last-ai-suggestion.json (possible AI/context limit).')
 
@@ -415,17 +417,18 @@ export const handleCreatePR = async (): Promise<void> => {
             { label: 'GitHub Copilot', value: 'copilot' },
             { label: 'OpenRouter', value: 'openrouter' },
             { label: 'Groq', value: 'groq' },
+            { label: 'Codex', value: 'codex' },
             { label: 'Back', value: 'back' },
           ])
           if (prov !== 'back') {
             const { chooseModelForProvider } = await import('../utils/git-ai.js')
             const chosen = await chooseModelForProvider(
-              prov as 'gemini' | 'copilot' | 'openrouter' | 'groq',
+              prov as 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'codex',
               'Choose model:',
               'Back'
             )
             if (chosen && chosen !== 'back') {
-              aiProvider = prov as 'copilot' | 'gemini' | 'openrouter' | 'groq'
+              aiProvider = prov as 'copilot' | 'gemini' | 'openrouter' | 'groq' | 'codex'
               currentModel = chosen
               if (state) {
                 state.aiProvider = aiProvider

@@ -294,11 +294,12 @@ const aiRewriteMergedNotes = async (
   language: 'en' | 'id'
 ): Promise<string | null> => {
   const savedState = loadState()
-  let aiProvider: 'gemini' | 'copilot' | 'openrouter' | 'groq' = 'copilot'
+  let aiProvider: 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'codex' = 'copilot'
   let copilotModel: CopilotModel | undefined
   let openrouterModel: OpenRouterModel | undefined
   let geminiModel: GeminiModel | undefined
   let groqModel: string | undefined
+  let codexModel: string | undefined
 
   // Use saved provider/model if available
   const configuredProvider = getConfiguredAIProvider(savedState)
@@ -307,13 +308,15 @@ const aiRewriteMergedNotes = async (
     (savedState?.copilotModel ||
       savedState?.openrouterModel ||
       savedState?.geminiModel ||
-      savedState?.groqModel)
+      savedState?.groqModel ||
+      savedState?.codexModel)
   ) {
     aiProvider = configuredProvider
     copilotModel = savedState.copilotModel
     openrouterModel = savedState.openrouterModel
     geminiModel = savedState.geminiModel
     groqModel = savedState.groqModel
+    codexModel = savedState.codexModel
   } else {
     let providerChosen = false
     while (!providerChosen) {
@@ -322,7 +325,8 @@ const aiRewriteMergedNotes = async (
         { label: 'Gemini', value: 'gemini' },
         { label: 'OpenRouter', value: 'openrouter' },
         { label: 'Groq', value: 'groq' },
-      ])) as 'gemini' | 'copilot' | 'openrouter' | 'groq'
+        { label: 'Codex', value: 'codex' },
+      ])) as 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'codex'
 
       const chosen = await chooseModelForProvider(aiProvider, undefined, 'Back to AI provider menu')
       if (!chosen || chosen === 'back') continue
@@ -342,6 +346,10 @@ const aiRewriteMergedNotes = async (
         }
         case 'groq': {
           groqModel = chosen
+          break
+        }
+        case 'codex': {
+          codexModel = chosen
           break
         }
       }
@@ -365,7 +373,9 @@ const aiRewriteMergedNotes = async (
           ? openrouterModel
           : aiProvider === 'groq'
             ? groqModel
-            : geminiModel
+            : aiProvider === 'codex'
+              ? codexModel
+              : geminiModel
     const modelDisplay = getModelValue(currentModel)
     spinner.start([
       `Merging release notes with ${getAIProviderShortName(aiProvider)}${modelDisplay ? ` (${modelDisplay})` : ''}`,
@@ -377,7 +387,8 @@ const aiRewriteMergedNotes = async (
       copilotModel,
       openrouterModel,
       geminiModel,
-      groqModel
+      groqModel,
+      codexModel
     )
 
     spinner.succeed('Merged release notes generated')
@@ -441,6 +452,10 @@ const aiRewriteMergedNotes = async (
               groqModel = newModel
               break
             }
+            case 'codex': {
+              codexModel = newModel
+              break
+            }
           }
         }
         correction = undefined
@@ -452,12 +467,14 @@ const aiRewriteMergedNotes = async (
           { label: 'Gemini', value: 'gemini' },
           { label: 'OpenRouter', value: 'openrouter' },
           { label: 'Groq', value: 'groq' },
-        ])) as 'gemini' | 'copilot' | 'openrouter' | 'groq'
+          { label: 'Codex', value: 'codex' },
+        ])) as 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'codex'
         aiProvider = prov
         copilotModel = undefined
         openrouterModel = undefined
         geminiModel = undefined
         groqModel = undefined
+        codexModel = undefined
         const provModel = await chooseModelForProvider(aiProvider, undefined, 'Back')
         if (provModel && provModel !== 'back') {
           switch (aiProvider) {
@@ -475,6 +492,10 @@ const aiRewriteMergedNotes = async (
             }
             case 'groq': {
               groqModel = provModel
+              break
+            }
+            case 'codex': {
+              codexModel = provModel
               break
             }
           }

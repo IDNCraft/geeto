@@ -7,6 +7,8 @@ import os from 'node:os'
 import path from 'node:path'
 import type {
   BranchStrategyConfig,
+  CommitConfig,
+  CommitTone,
   GeminiConfig,
   GitHubConfig,
   GitLabConfig,
@@ -297,6 +299,7 @@ export const getBranchStrategyConfig = (): BranchStrategyConfig | null => {
       const protectedMatch = content.match(/protected_branches\s*=\s*\[([^\]]*)\]/)
       const allowedBasesMatch = content.match(/allowed_bases\s*=\s*\[([^\]]*)\]/)
       const projectToolMatch = content.match(/project_tool\s*=\s*["']([^"']+)["']/)
+      const maxWordsMatch = content.match(/max_words\s*=\s*(\d+)/)
 
       // Only return config if separator has been explicitly set
       if (separatorMatch) {
@@ -329,6 +332,9 @@ export const getBranchStrategyConfig = (): BranchStrategyConfig | null => {
           protectedBranches,
           allowedBases,
           projectTool: (projectToolMatch?.[1] as 'trello' | 'none') ?? undefined,
+          maxWords: maxWordsMatch?.[1]
+            ? (Number.parseInt(maxWordsMatch[1], 10) as 1 | 2 | 3)
+            : undefined,
         }
       }
     }
@@ -364,7 +370,7 @@ export const saveBranchStrategyConfig = (config: BranchStrategyConfig): void => 
 # Auto-generated on ${new Date().toISOString()}
 
 separator = "${config.separator}"
-${config.prefixSeparator ? `prefix_separator = "${config.prefixSeparator}"\n` : ''}${config.lastNamingStrategy ? `last_naming_strategy = "${config.lastNamingStrategy}"\n` : ''}${config.lastTrelloList ? `last_trello_list = "${config.lastTrelloList}"\n` : ''}${config.projectTool ? `project_tool = "${config.projectTool}"\n` : ''}${protectedLine}${allowedBasesLine}`
+${config.prefixSeparator ? `prefix_separator = "${config.prefixSeparator}"\n` : ''}${config.lastNamingStrategy ? `last_naming_strategy = "${config.lastNamingStrategy}"\n` : ''}${config.lastTrelloList ? `last_trello_list = "${config.lastTrelloList}"\n` : ''}${config.projectTool ? `project_tool = "${config.projectTool}"\n` : ''}${config.maxWords === undefined ? '' : `max_words = ${config.maxWords}\n`}${protectedLine}${allowedBasesLine}`
 
     fs.writeFileSync(path, configContent, 'utf8')
   } catch (error: unknown) {
@@ -383,6 +389,52 @@ export const getProtectedBranches = (): string[] => {
   const config = getBranchStrategyConfig()
   const custom = config?.protectedBranches ?? []
   return [...new Set([...DEFAULT_PROTECTED_BRANCHES, ...custom])]
+}
+
+/**
+ * Get path to commit config (project-local)
+ */
+export const getCommitConfigPath = (): string => {
+  return '.geeto/commit-config.toml'
+}
+
+export const getCommitConfig = (): CommitConfig | null => {
+  try {
+    const configPath = resolveConfigPath('commit-config.toml')
+    if (fs.existsSync(configPath)) {
+      const content = fs.readFileSync(configPath, 'utf8')
+      const style = content.match(/style\s*=\s*["']([^"']+)["']/)?.[1] as
+        | CommitConfig['style']
+        | undefined
+      const subjectLength = content.match(/subject_length\s*=\s*(\d+)/)?.[1]
+      const tone = content.match(/tone\s*=\s*["']([^"']+)["']/)?.[1] as CommitTone | undefined
+      if (style && (style === 'singleline' || style === 'multiline')) {
+        const length = subjectLength
+          ? (Number.parseInt(subjectLength, 10) as CommitConfig['subjectLength'])
+          : 72
+        return { style, subjectLength: length, tone: tone ?? undefined }
+      }
+    }
+  } catch {
+    // Ignore errors
+  }
+  return null
+}
+
+export const saveCommitConfig = (config: CommitConfig): void => {
+  const dir = path.join(process.cwd(), '.geeto')
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true })
+  }
+  const toneLine = config.tone ? `tone = "${config.tone}"\n` : ''
+  const content = `style = "${config.style}"
+subject_length = ${config.subjectLength}
+${toneLine}`
+  fs.writeFileSync(path.join(dir, 'commit-config.toml'), content, 'utf8')
+}
+
+export const hasCommitConfig = (): boolean => {
+  return fs.existsSync(resolveConfigPath('commit-config.toml'))
 }
 
 /**

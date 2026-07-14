@@ -19,12 +19,17 @@ import {
 import { colors } from '../utils/colors.js'
 import { isDryRun, logDryRun } from '../utils/dry-run.js'
 import { execAsync, execSilent } from '../utils/exec.js'
-import { generateTextWithProvider, getAIProviderShortName } from '../utils/git-ai.js'
+import {
+  generateTextWithProvider,
+  getAIProviderShortName,
+  isContextLimitFailure,
+  isTransientAIFailure,
+} from '../utils/git-ai.js'
 import { getCurrentBranch } from '../utils/git.js'
 import { getPlatformRepoFromRemote, validatePlatformConfig } from '../utils/github-helpers.js'
 import { log } from '../utils/logging.js'
 import { loadPrompt } from '../utils/prompt-loader.js'
-import { loadState } from '../utils/state.js'
+import { loadState, saveState } from '../utils/state.js'
 
 /**
  * Get recent commit messages on current branch (for PR body)
@@ -298,14 +303,65 @@ export const handleCreatePR = async (): Promise<void> => {
         correction
       )
 
-      if (!aiResult) {
-        log.warn('AI failed. Falling back to manual.')
-        aiUsed = false
-        break
+      const failed =
+        !aiResult || isTransientAIFailure(aiResult.body) || isContextLimitFailure(aiResult.body)
+
+      if (failed) {
+        log.warn('AI generation failed or hit context limits.')
+        const failureAction = await select('How would you like to continue?', [
+          { label: 'Change model and retry', value: 'change-model' },
+          { label: 'Change AI provider and retry', value: 'change-provider' },
+          { label: 'Discard & enter manually', value: 'discard' },
+        ])
+
+        if (failureAction === 'change-model') {
+          const { chooseModelForProvider } = await import('../utils/git-ai.js')
+          const chosen = await chooseModelForProvider(aiProvider, 'Choose model:', 'Back')
+          if (chosen && chosen !== 'back') {
+            currentModel = chosen
+            updateModelInState(state, aiProvider, chosen)
+          }
+          correction = ''
+          continue
+        }
+
+        if (failureAction === 'change-provider') {
+          const prov = await select('Choose AI provider:', [
+            { label: 'Gemini', value: 'gemini' },
+            { label: 'GitHub Copilot', value: 'copilot' },
+            { label: 'OpenRouter', value: 'openrouter' },
+            { label: 'Groq', value: 'groq' },
+            { label: 'Back', value: 'back' },
+          ])
+          if (prov !== 'back') {
+            const { chooseModelForProvider } = await import('../utils/git-ai.js')
+            const chosen = await chooseModelForProvider(
+              prov as 'gemini' | 'copilot' | 'openrouter' | 'groq',
+              'Choose model:',
+              'Back'
+            )
+            if (chosen && chosen !== 'back') {
+              aiProvider = prov as 'copilot' | 'gemini' | 'openrouter' | 'groq'
+              currentModel = chosen
+              if (state) {
+                state.aiProvider = aiProvider
+                updateModelInState(state, aiProvider, chosen)
+                saveState(state)
+              }
+            }
+          }
+          correction = ''
+          continue
+        }
+
+        if (failureAction === 'discard') {
+          aiUsed = false
+          break
+        }
       }
 
-      prTitle = aiResult.title
-      prBody = aiResult.body
+      prTitle = aiResult!.title
+      prBody = aiResult!.body
       showAIPreview(prLabel, prTitle, prBody)
       log.info('Incorrect? check .geeto/last-ai-suggestion.json (possible AI/context limit).')
 

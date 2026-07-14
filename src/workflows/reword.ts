@@ -732,7 +732,7 @@ const generateNewMessages = async (
         }
 
         aiResult = await interactiveAIFallback(
-          firstAttempt ? initialAiResult : null,
+          initialAiResult,
           provForFallback,
           modelChoice,
           diff,
@@ -774,7 +774,18 @@ const generateNewMessages = async (
       forceDirect = false
 
       const commitMessage = aiResult ?? ''
-      if (!commitMessage) {
+      if (
+        !commitMessage ||
+        isTransientAIFailure(commitMessage) ||
+        isContextLimitFailure(commitMessage)
+      ) {
+        if (forceDirect) {
+          log.warn('AI generation failed or hit context limits. Returning to interactive menu...')
+          forceDirect = false
+          initialAiResult = aiResult
+          continue
+        }
+
         log.warn('Could not generate message; falling back to manual edit')
         const edited = await editMultiline(
           `Edit: ${commit.shortHash} ${commit.subject}`,

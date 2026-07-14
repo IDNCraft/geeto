@@ -674,7 +674,7 @@ export const handleCommitWorkflow = async (
         }
 
         aiResult = await interactiveAIFallback(
-          firstAttempt ? initialAiResult : null,
+          initialAiResult,
           currentProv,
           modelChoice,
           diff,
@@ -725,7 +725,18 @@ export const handleCommitWorkflow = async (
 
       const commitMessage = aiResult ?? ''
 
-      if (!commitMessage) {
+      if (
+        !commitMessage ||
+        isTransientAIFailure(commitMessage) ||
+        isContextLimitFailure(commitMessage)
+      ) {
+        if (forceDirect) {
+          log.warn('AI generation failed or hit context limits. Returning to interactive menu...')
+          forceDirect = false
+          initialAiResult = aiResult
+          continue
+        }
+
         log.warn('Could not generate commit message from AI provider')
         break
       }

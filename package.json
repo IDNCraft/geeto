@@ -1,12 +1,34 @@
 {
   "name": "geeto",
-  "version": "0.11.0",
+  "version": "0.12.0",
   "description": "AI-powered Git workflow automation CLI with smart commit messages, branch naming, and Trello integration",
   "author": {
     "email": "amdev142@gmail.com",
     "name": "Agung Maulana Malik",
     "url": "https://github.com/rust142"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rust142/geeto.git"
+  },
+  "keywords": [
+    "git",
+    "cli",
+    "ai",
+    "commit-message",
+    "branch-name",
+    "gemini",
+    "copilot",
+    "workflow",
+    "trello",
+    "openrouter",
+    "groq",
+    "codex",
+    "release",
+    "changelog",
+    "git-automation",
+    "conventional-commits"
+  ],
   "license": "MIT",
   "type": "module",
   "bin": {

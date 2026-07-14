@@ -1,6 +1,6 @@
 # Geeto
 
-> AI-Powered Git Workflow Automation
+> AI-powered Git workflow CLI — branch naming, commit messages, release management, Trello. Supports Gemini, Copilot, OpenRouter, Groq, Codex.
 
 [![Support Palestine](https://raw.githubusercontent.com/Safouene1/support-palestine-banner/master/banner-support.svg)](https://kitabisa.com/campaign/celenganwargapalestina)
 
@@ -9,7 +9,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 
-Geeto automates your entire Git workflow — from staging to cleanup — with AI-powered branch naming, commit messages, release management, and Trello integration. Supports Gemini, GitHub Copilot, OpenRouter, Groq, and OpenAI Codex.
+Geeto is an AI-powered Git workflow automation CLI that handles staging, branching, commit messages, pull requests, release management, and branch cleanup — all from the terminal. Integrates with Gemini, GitHub Copilot, OpenRouter, Groq, and OpenAI Codex for AI-generated branch names, conventional commits, and changelogs. Features Trello card linking, GitLab/GitHub Releases, checkpoint recovery, and a full git toolkit (cherry-pick, stash, amend, undo, stats).
 
 ---
 

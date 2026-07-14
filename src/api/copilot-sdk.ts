@@ -9,6 +9,7 @@
  */
 
 import {
+  buildCommitPrompt,
   buildPromptWithCorrection,
   buildReleaseNotesPrompt,
   cleanAIContent,
@@ -202,7 +203,7 @@ export const generateCommitMessage = async (
   correction?: string,
   model?: string
 ): Promise<string | null> => {
-  const prompt = buildPromptWithCorrection('commit-message-prompt.md', diff, 'Diff', correction)
+  const prompt = buildCommitPrompt(diff, correction)
 
   try {
     const content = await chatCompletion([{ role: 'user', content: prompt }], model)

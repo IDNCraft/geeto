@@ -10,11 +10,13 @@ import { multiSelect, select } from '../cli/menu.js'
 import { colors } from '../utils/colors.js'
 import {
   getBranchStrategyConfig,
+  getCommitConfig,
   getProtectedBranches,
   GLOBAL_GEETO_DIR,
   hasGeminiConfig,
   hasTrelloConfig,
   saveBranchStrategyConfig,
+  saveCommitConfig,
 } from '../utils/config.js'
 import { log } from '../utils/logging.js'
 import { ScrambleProgress } from '../utils/scramble.js'
@@ -1277,6 +1279,85 @@ const handleSaveGlobalAiConfig = (): boolean | void => {
   return false
 }
 
+const handleCommitStyleSetting = async (): Promise<boolean | void> => {
+  const current = getCommitConfig()
+
+  while (true) {
+    const commitChoice = await select('Commit settings:', [
+      {
+        label: `Style  (${current?.tone ?? 'technical'})`,
+        value: 'tone',
+      },
+      {
+        label: `Subject length  (${current?.subjectLength ?? 72} chars)`,
+        value: 'subject-length',
+      },
+      {
+        label: `Body style  (${current?.style ?? 'multiline'})`,
+        value: 'body-style',
+      },
+      { label: 'Back to settings menu', value: 'back' },
+    ])
+    if (commitChoice === 'back') return true
+
+    if (commitChoice === 'tone') {
+      const toneChoice = await select('Commit tone:', [
+        { label: 'Technical  (Precise and specific)', value: 'technical' },
+        { label: 'Concise  (Short and compact)', value: 'concise' },
+        { label: 'Descriptive  (Natural and explanatory)', value: 'descriptive' },
+        { label: 'Back', value: 'back' },
+      ])
+      if (toneChoice === 'back') continue
+
+      saveCommitConfig({
+        style: current?.style ?? 'multiline',
+        subjectLength: current?.subjectLength ?? 72,
+        tone: toneChoice as 'technical' | 'concise' | 'descriptive',
+      })
+      log.success(`Commit tone set to ${toneChoice}`)
+      return false
+    }
+
+    if (commitChoice === 'subject-length') {
+      const lengthChoice = await select(
+        `Subject length (current: ${current?.subjectLength ?? 72}):`,
+        [
+          { label: '50 chars  (conventional commits standard)', value: '50' },
+          { label: '72 chars  (git standard)', value: '72' },
+          { label: '100 chars  (modern projects)', value: '100' },
+          { label: 'Back', value: 'back' },
+        ]
+      )
+      if (lengthChoice === 'back') continue
+
+      saveCommitConfig({
+        style: current?.style ?? 'multiline',
+        subjectLength: Number.parseInt(lengthChoice, 10) as 50 | 72 | 100,
+        tone: current?.tone,
+      })
+      log.success(`Subject length set to ${lengthChoice} chars`)
+      return false
+    }
+
+    if (commitChoice === 'body-style') {
+      const bodyChoice = await select('Body style:', [
+        { label: 'Multiline  (subject + body with blank line)', value: 'multiline' },
+        { label: 'Singleline  (subject only, no body)', value: 'singleline' },
+        { label: 'Back', value: 'back' },
+      ])
+      if (bodyChoice === 'back') continue
+
+      saveCommitConfig({
+        style: bodyChoice as 'singleline' | 'multiline',
+        subjectLength: current?.subjectLength ?? 72,
+        tone: current?.tone,
+      })
+      log.success(`Body style set to ${bodyChoice}`)
+      return false
+    }
+  }
+}
+
 export const showSettingsMenu = async () => {
   while (true) {
     log.info('Settings Menu')
@@ -1286,36 +1367,14 @@ export const showSettingsMenu = async () => {
     const hasLocalAiConfig = ['gemini', 'openrouter', 'groq', 'codex'].some((p) => isConfigLocal(p))
 
     const menuOptions: Array<{ label: string; value: string; disabled?: boolean }> = [
-      { label: 'Branch', value: '_branch', disabled: true },
-      { label: '  Branch prefix  (dev#name / dev/name)', value: 'prefix' },
-      { label: '  Branch separator  (hyphen / underscore)', value: 'separator' },
-      { label: '  Protected branches', value: 'protected' },
-      { label: 'AI', value: '_ai', disabled: true },
-      { label: '  Active model  (switch provider & model)', value: 'change-model' },
-      { label: '  Saved models  (manage favorites per provider)', value: 'models' },
+      { label: 'AI', value: '_ai' },
+      { label: 'Branch', value: '_branch' },
+      { label: 'Commit', value: '_commit' },
+
+      { label: 'Setup', value: '_setup' },
+      { label: 'System', value: '_system' },
+      { label: 'Back', value: 'back' },
     ]
-    if (hasLocalGeetoFolder && hasLocalAiConfig) {
-      menuOptions.push({
-        label: '  Move local AI config to global (~/.geeto/)',
-        value: 'save-global',
-      })
-    }
-    if (hasLocalGeetoFolder && hasGlobalConfig) {
-      menuOptions.push({ label: '  Manage global config (~/.geeto/)', value: 'global-config' })
-    }
-    menuOptions.push(
-      { label: 'Setup', value: '_setup', disabled: true },
-      { label: '  GitHub Copilot', value: 'copilot' },
-      { label: '  Gemini', value: 'gemini' },
-      { label: '  OpenRouter', value: 'openrouter' },
-      { label: '  Groq', value: 'groq' },
-      { label: '  Codex', value: 'codex' },
-      { label: '  Trello', value: 'trello' },
-      { label: 'System', value: '_system', disabled: true },
-      { label: '  Installation info', value: 'where' },
-      { label: '  Uninstall geeto', value: 'uninstall' },
-      { label: 'Back', value: 'back' }
-    )
 
     const settingChoice = await select('Settings:', menuOptions)
 
@@ -1323,51 +1382,189 @@ export const showSettingsMenu = async () => {
       break
     }
 
+    if (settingChoice === '_branch') {
+      const branchConfig = getBranchStrategyConfig()
+      const branchChoice = await select('Branch settings:', [
+        { label: 'Branch prefix  (dev#name / dev/name)', value: 'prefix' },
+        { label: 'Branch separator  (hyphen / underscore)', value: 'separator' },
+        { label: `Max words  (${branchConfig?.maxWords ?? 3})`, value: 'max-words' },
+        { label: 'Protected branches', value: 'protected' },
+        { label: 'Back', value: 'back' },
+      ])
+      if (branchChoice === 'back') continue
+
+      if (branchChoice === 'prefix') {
+        const back = await handlePrefixFormatSetting()
+        if (back) continue
+      }
+      if (branchChoice === 'separator') {
+        const back = await handleSeparatorSetting()
+        if (back) continue
+      }
+      if (branchChoice === 'max-words') {
+        const wordChoice = await select(
+          `Max words in branch name (current: ${branchConfig?.maxWords ?? 3}):`,
+          [
+            { label: '1 word', value: '1' },
+            { label: '2 words', value: '2' },
+            { label: '3 words', value: '3' },
+            { label: 'Back', value: 'back' },
+          ]
+        )
+        if (wordChoice === 'back') continue
+        const updated = branchConfig ?? { separator: '-' as const }
+        updated.maxWords = Number.parseInt(wordChoice, 10)
+        saveBranchStrategyConfig(updated)
+        log.success(`Branch max words set to ${wordChoice}`)
+        // fall through to "Configure another setting?"
+      }
+      if (branchChoice === 'protected') {
+        const back = await handleProtectedBranchesSetting()
+        if (back) continue
+      }
+      // fall through to "Configure another setting?"
+    }
+
+    if (settingChoice === '_ai') {
+      const aiChoice = await select('AI settings:', [
+        { label: 'Active model  (switch provider & model)', value: 'change-model' },
+        { label: 'Saved models  (manage favorites per provider)', value: 'models' },
+        { label: 'Back', value: 'back' },
+      ])
+      if (aiChoice === 'back') continue
+
+      if (aiChoice === 'change-model') {
+        const back = await handleChangeModelSetting()
+        if (back) continue
+      }
+      if (aiChoice === 'models') {
+        const back = await handleModelResetSetting()
+        if (back) continue
+      }
+      // fall through to "Configure another setting?"
+    }
+
+    if (settingChoice === '_commit') {
+      const back = await handleCommitStyleSetting()
+      if (back) continue
+      // fall through to "Configure another setting?"
+    }
+
+    if (settingChoice === '_setup') {
+      const setupChoice = await select('Setup:', [
+        { label: 'GitHub Copilot', value: 'copilot' },
+        { label: 'Gemini', value: 'gemini' },
+        { label: 'OpenRouter', value: 'openrouter' },
+        { label: 'Groq', value: 'groq' },
+        { label: 'Codex', value: 'codex' },
+        { label: 'Trello', value: 'trello' },
+        { label: 'Back', value: 'back' },
+      ])
+      if (setupChoice === 'back') continue
+
+      if (setupChoice === 'copilot') {
+        const back = await handleCopilotSetting()
+        if (back) continue
+      }
+      if (setupChoice === 'gemini') {
+        const back = await handleGeminiSetting()
+        if (back) continue
+      }
+      if (setupChoice === 'openrouter') {
+        const back = await handleOpenRouterSetting()
+        if (back) continue
+      }
+      if (setupChoice === 'groq') {
+        const back = await handleGroqSetting()
+        if (back) continue
+      }
+      if (setupChoice === 'codex') {
+        const back = await handleCodexSetting()
+        if (back) continue
+      }
+      if (setupChoice === 'trello') {
+        const back = await handleTrelloSetting()
+        if (back) continue
+      }
+      // fall through to "Configure another setting?"
+    }
+
+    if (settingChoice === '_system') {
+      const systemOptions: Array<{ label: string; value: string }> = [
+        { label: 'Installation info', value: 'where' },
+        { label: 'Uninstall geeto', value: 'uninstall' },
+      ]
+      if (hasLocalGeetoFolder && hasLocalAiConfig) {
+        systemOptions.push({
+          label: 'Move local AI config to global (~/.geeto/)',
+          value: 'save-global',
+        })
+      }
+      if (hasLocalGeetoFolder && hasGlobalConfig) {
+        systemOptions.push({ label: 'Manage global config (~/.geeto/)', value: 'global-config' })
+      }
+      systemOptions.push({ label: 'Back', value: 'back' })
+
+      const systemChoice = await select('System:', systemOptions)
+      if (systemChoice === 'back') continue
+
+      switch (systemChoice) {
+        case 'where': {
+          const { handleWhereInstalled } = await import('./doctor.js')
+          await handleWhereInstalled()
+          // fall through to "Configure another setting?"
+
+          break
+        }
+        case 'uninstall': {
+          const { handleUninstall } = await import('./doctor.js')
+          await handleUninstall()
+          process.exit(0)
+
+          break
+        }
+        case 'save-global': {
+          handleSaveGlobalAiConfig()
+          // fall through to "Configure another setting?"
+
+          break
+        }
+        case 'global-config': {
+          const back = await handleGlobalConfigSetting()
+          if (back) continue
+          // fall through to "Configure another setting?"
+
+          break
+        }
+        // No default
+      }
+      // fall through to "Configure another setting?"
+    }
+
+    // Legacy flat handlers — kept for safety
     if (settingChoice === 'prefix') {
       const back = await handlePrefixFormatSetting()
-      if (back) {
-        continue
-      }
+      if (back) continue
     }
     if (settingChoice === 'separator') {
       const back = await handleSeparatorSetting()
-      if (back) {
-        continue
-      }
+      if (back) continue
     }
     if (settingChoice === 'protected') {
       const back = await handleProtectedBranchesSetting()
-      if (back) {
-        continue
-      }
+      if (back) continue
     }
     if (settingChoice === 'models') {
       const back = await handleModelResetSetting()
-      if (back) {
-        continue
-      }
-    }
-    if (settingChoice === 'save-global') {
-      handleSaveGlobalAiConfig()
-    }
-    if (settingChoice === 'global-config') {
-      const back = await handleGlobalConfigSetting()
-      if (back) {
-        continue
-      }
+      if (back) continue
     }
     if (settingChoice === 'change-model') {
       const back = await handleChangeModelSetting()
-      if (back) {
-        // user chose to go back from within handler — return to settings menu
-        continue
-      }
+      if (back) continue
     }
     if (settingChoice === 'copilot') {
       const back = await handleCopilotSetting()
-      if (back) {
-        continue
-      }
+      if (back) continue
     }
     if (settingChoice === 'gemini') {
       const back = await handleGeminiSetting()

@@ -1,3 +1,4 @@
+import { getBranchStrategyConfig, getCommitConfig } from './config.js'
 import { loadPrompt } from './prompt-loader.js'
 
 /** Minimum length for AI-generated responses to be considered valid. */
@@ -37,6 +38,14 @@ export const normalizeBranchName = (text: string): string => {
     .replaceAll(/-+/g, '-')
     .replaceAll(/^-|-$/g, '')
 
+  // Apply maxWords from branch config
+  const config = getBranchStrategyConfig()
+  const maxWords = config?.maxWords ?? 3
+  const words = cleaned.split('-')
+  if (words.length > maxWords) {
+    return words.slice(0, maxWords).join('-')
+  }
+
   if (cleaned.length <= 25) return cleaned
   // Truncate at last word boundary within 25 chars
   const truncated = cleaned.slice(0, 25)
@@ -57,6 +66,32 @@ export const buildPromptWithCorrection = (
   return correction
     ? `${promptBase}\n\n${inputLabel}:\n${input}\n\nAdjustment: ${correction}`
     : `${promptBase}\n\n${inputLabel}:\n${input}`
+}
+
+/**
+ * Build a commit message prompt with user's style config applied.
+ */
+export const buildCommitPrompt = (diff: string, correction?: string): string => {
+  const config = getCommitConfig()
+  const prompt = buildPromptWithCorrection('commit-message-prompt.md', diff, 'Diff', correction)
+
+  const style = config?.style ?? 'multiline'
+  const subjectLength = config?.subjectLength ?? 72
+  const tone = config?.tone ?? 'technical'
+
+  const body =
+    style === 'singleline'
+      ? 'Output ONLY the subject line — no body, no blank line after subject.'
+      : 'Wrap body lines at ~72 characters. Body max 360 chars. Separate subject and body by a single blank line.'
+
+  const toneMap: Record<string, string> = {
+    technical:
+      'Use precise, specific language with proper conventional commit format (type(scope): subject).',
+    concise: 'Keep it short and compact — minimal words, maximum signal.',
+    descriptive: 'Write naturally and explain the change thoroughly — why, what, and how.',
+  }
+
+  return `${prompt}\n\n${body}\nSubject must be max ${subjectLength} characters.\n${toneMap[tone] ?? toneMap.technical}`
 }
 
 /**

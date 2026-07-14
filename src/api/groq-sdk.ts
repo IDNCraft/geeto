@@ -1,6 +1,7 @@
 import OpenAI from 'openai'
 
 import {
+  buildCommitPrompt,
   buildPromptWithCorrection,
   buildReleaseNotesPrompt,
   cleanAIContent,
@@ -65,7 +66,7 @@ export const generateCommitMessage = async (
   model?: GroqModel
 ): Promise<string | null> => {
   if (!ensureClient()) return null
-  const prompt = buildPromptWithCorrection('commit-message-prompt.md', diff, 'Diff', correction)
+  const prompt = buildCommitPrompt(diff, correction)
   try {
     const res = await (client as OpenAI).chat.completions.create({
       model: model ?? DEFAULT_MODEL,

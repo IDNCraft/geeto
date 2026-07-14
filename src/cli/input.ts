@@ -12,6 +12,22 @@ const rl = readline.createInterface({
   output: process.stdout,
 })
 
+const safeRlPause = (): void => {
+  try {
+    rl.pause()
+  } catch {
+    // Ignore if readline was already closed
+  }
+}
+
+const safeRlResume = (): void => {
+  try {
+    rl.resume()
+  } catch {
+    // Ignore if readline was already closed
+  }
+}
+
 const readStdinText = (): string => {
   try {
     return fs.readFileSync(0, 'utf8')
@@ -139,7 +155,7 @@ export const confirm = (question: string, defaultYes: boolean = true): boolean =
   render()
 
   // Enter raw mode for key-by-key reading
-  rl.pause()
+  safeRlPause()
   process.stdin.setRawMode(true)
 
   const buf = Buffer.alloc(16)
@@ -220,7 +236,7 @@ export const confirm = (question: string, defaultYes: boolean = true): boolean =
       process.stdin.setRawMode(false)
     }
     process.stdout.write('\u001B[?25h') // Show cursor
-    rl.resume()
+    safeRlResume()
     if (usingTty && fd !== 0) {
       try {
         fs.closeSync(fd)
@@ -295,16 +311,16 @@ export const editMultiline = async (question: string, initialText = ''): Promise
   if (!supportsStickyTerminalLayout()) {
     printPlainIntro()
     console.log('  Submit with EOF: Ctrl+D on Unix/macOS, Ctrl+Z then Enter on Windows.')
-    rl.pause()
+    safeRlPause()
     const text = getTextResult(readStdinText())
-    rl.resume()
+    safeRlResume()
     return text
   }
 
   process.stdout.write('\u001B[?25h')
 
   // Pause readline so fs.readSync can use fd 0
-  rl.pause()
+  safeRlPause()
   process.stdin.setRawMode(true)
 
   let rows = process.stdout.rows ?? 24
@@ -551,6 +567,7 @@ export const editMultiline = async (question: string, initialText = ''): Promise
       process.off('SIGWINCH', handleResize)
       process.stdout.write('\u001B[r\u001B[?1049l')
       process.stdin.pause()
+      safeRlResume()
       resolve(value)
     }
 
@@ -731,5 +748,9 @@ export const editMultiline = async (question: string, initialText = ''): Promise
  * Close the readline interface
  */
 export const closeInput = (): void => {
-  rl.close()
+  try {
+    rl.close()
+  } catch {
+    // Ignore if already closed
+  }
 }

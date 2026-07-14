@@ -1138,6 +1138,8 @@ export const showSettingsMenu = async () => {
     log.info('Settings Menu')
 
     const hasGlobalConfig = globalProviders().length > 0
+    const hasLocalGeetoFolder = existsSync(configDirPath())
+    const hasLocalAiConfig = ['gemini', 'openrouter', 'groq'].some((p) => isConfigLocal(p))
 
     const menuOptions: Array<{ label: string; value: string; disabled?: boolean }> = [
       { label: 'Branch', value: '_branch', disabled: true },
@@ -1147,9 +1149,14 @@ export const showSettingsMenu = async () => {
       { label: 'AI', value: '_ai', disabled: true },
       { label: '  Active model  (switch provider & model)', value: 'change-model' },
       { label: '  Saved models  (manage favorites per provider)', value: 'models' },
-      { label: '  Move local AI config to global (~/.geeto/)', value: 'save-global' },
     ]
-    if (hasGlobalConfig) {
+    if (hasLocalGeetoFolder && hasLocalAiConfig) {
+      menuOptions.push({
+        label: '  Move local AI config to global (~/.geeto/)',
+        value: 'save-global',
+      })
+    }
+    if (hasLocalGeetoFolder && hasGlobalConfig) {
       menuOptions.push({ label: '  Manage global config (~/.geeto/)', value: 'global-config' })
     }
     menuOptions.push(

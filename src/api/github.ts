@@ -183,10 +183,12 @@ export interface GitHubIssue {
   number: number
   html_url: string
   title: string
+  body: string
   state: string
   user: { login: string }
   created_at: string
   labels: Array<{ name: string; color: string }>
+  pull_request?: unknown
 }
 
 export interface GitHubLabel {
@@ -247,5 +249,97 @@ export const listLabels = async (owner: string, repo: string): Promise<GitHubLab
     return (await response.json()) as GitHubLabel[]
   } catch {
     return []
+  }
+}
+
+/**
+ * List open Issues for the repo
+ */
+export const listIssues = async (owner: string, repo: string): Promise<GitHubIssue[]> => {
+  try {
+    const params = new URLSearchParams({
+      state: 'open',
+      per_page: '30',
+    })
+    const response = await githubFetch(`/repos/${owner}/${repo}/issues?` + `${params.toString()}`)
+
+    if (!response.ok) {
+      log.clearLine()
+      log.gap()
+      log.warn('GitHub API error: ' + `${response.status} ${response.statusText}`)
+      return []
+    }
+
+    const results = (await response.json()) as Array<{
+      number: number
+      html_url: string
+      title: string
+      body?: string
+      state: string
+      user: { login: string }
+      created_at: string
+      labels?: Array<{ name: string; color: string }>
+      pull_request?: unknown
+    }>
+    // GitHub pulls endpoint are technically issues too in GH v3 API. Let's filter out PRs.
+    return results
+      .filter((issue) => !issue.pull_request)
+      .map((issue) => ({
+        number: issue.number,
+        html_url: issue.html_url,
+        title: issue.title,
+        body: issue.body ?? '',
+        state: issue.state,
+        user: { login: issue.user.login },
+        created_at: issue.created_at,
+        labels: (issue.labels ?? []).map((l) => ({ name: l.name, color: l.color })),
+      }))
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : String(error)
+    log.clearLine()
+    log.gap()
+    log.warn(`Failed to list issues: ${msg}`)
+    return []
+  }
+}
+
+/**
+ * Get diff for a pull request
+ */
+export const getPullRequestDiff = async (
+  owner: string,
+  repo: string,
+  number: number
+): Promise<string | null> => {
+  try {
+    const response = await githubFetch(`/repos/${owner}/${repo}/pulls/${number}`, {
+      headers: {
+        Accept: 'application/vnd.github.v3.diff',
+      },
+    })
+    if (!response.ok) return null
+    return await response.text()
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Create a comment on a PR (using issue comment API)
+ */
+export const createPRComment = async (
+  owner: string,
+  repo: string,
+  number: number,
+  body: string
+): Promise<boolean> => {
+  try {
+    const response = await githubFetch(`/repos/${owner}/${repo}/issues/${number}/comments`, {
+      method: 'POST',
+      body: JSON.stringify({ body }),
+    })
+    return response.ok
+  } catch {
+    return false
   }
 }

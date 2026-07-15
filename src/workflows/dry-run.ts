@@ -99,6 +99,16 @@ export const handleDryRunMenu = async (): Promise<void> => {
         await m.handleCreatePR()
         break
       }
+      case 'review-pr': {
+        const m = await import('./review-pr.js')
+        await m.handleReviewPR()
+        break
+      }
+      case 'review-issue': {
+        const m = await import('./review-issue.js')
+        await m.handleReviewIssue()
+        break
+      }
       case 'issue': {
         const m = await import('./issue.js')
         await m.handleCreateIssue()

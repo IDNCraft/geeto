@@ -36,9 +36,10 @@ export interface GitLabIssueParams {
 
 export interface GitLabIssue {
   iid: number
-  web_url: string
   title: string
+  description: string
   state: string
+  web_url: string
   author: { username: string }
   created_at: string
   labels: string[]
@@ -264,5 +265,104 @@ export const listLabels = async (projectPath: string): Promise<GitLabLabel[]> =>
     return (await response.json()) as GitLabLabel[]
   } catch {
     return []
+  }
+}
+
+/**
+ * List open Issues for the project
+ */
+export const listIssues = async (projectPath: string): Promise<GitLabIssue[]> => {
+  try {
+    const response = await gitlabFetch(`/projects/${projectPath}/issues?state=opened&per_page=30`)
+
+    if (!response.ok) {
+      log.clearLine()
+      log.gap()
+      log.warn('GitLab API error: ' + `${response.status} ${response.statusText}`)
+      return []
+    }
+
+    return (await response.json()) as GitLabIssue[]
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : String(error)
+    log.clearLine()
+    log.gap()
+    log.warn(`Failed to list issues: ${msg}`)
+    return []
+  }
+}
+
+/**
+ * Get diff for a GitLab Merge Request
+ */
+export const getMergeRequestDiff = async (
+  projectPath: string,
+  iid: number
+): Promise<string | null> => {
+  try {
+    const response = await gitlabFetch(`/projects/${projectPath}/merge_requests/${iid}/changes`)
+    if (!response.ok) return null
+    const data = (await response.json()) as {
+      changes: Array<{
+        diff: string
+        new_path: string
+        old_path: string
+        a_mode: string
+        b_mode: string
+        new_file: boolean
+        renamed_file: boolean
+        deleted_file: boolean
+      }>
+    }
+    // GitLab returns structured changes. Let's rebuild standard unified diff format.
+    return data.changes
+      .map(
+        (c) =>
+          `diff --git a/${c.old_path} b/${c.new_path}\n` +
+          `--- a/${c.old_path}\n` +
+          `+++ b/${c.new_path}\n` +
+          c.diff
+      )
+      .join('\n')
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Create a comment on a GitLab Issue (using Issue notes endpoint)
+ */
+export const createIssueComment = async (
+  projectPath: string,
+  iid: number,
+  body: string
+): Promise<boolean> => {
+  try {
+    const response = await gitlabFetch(`/projects/${projectPath}/issues/${iid}/notes`, {
+      method: 'POST',
+      body: JSON.stringify({ body }),
+    })
+    return response.ok
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Create a discussion / note on a GitLab MR (MR comment)
+ */
+export const createMRComment = async (
+  projectPath: string,
+  iid: number,
+  body: string
+): Promise<boolean> => {
+  try {
+    const response = await gitlabFetch(`/projects/${projectPath}/merge_requests/${iid}/notes`, {
+      method: 'POST',
+      body: JSON.stringify({ body }),
+    })
+    return response.ok
+  } catch {
+    return false
   }
 }

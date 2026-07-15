@@ -33,7 +33,7 @@ messages:
 
       For the given issue ({{input}}), perform the following checks and provide a concise structured output.
 
-      1) Categorize the issue as one of: `bug`, `feature request`, `docs`, `usage/help`, or `other`.
+      1) Categorize the issue as one of: `bug`, `feature request`, `docs`, `usage/help`, or `other`. State it clearly, e.g. "I've labeled this as [category]. The team will review and follow up with next steps."
 
       2) For BUGs:
         - Determine severity: `critical` / `high` / `medium` / `low`.
@@ -49,7 +49,7 @@ messages:
 
       4) For ALL issues:
         - If relevant, extract a brief `How to use (from README):` block (2–6 commands) to help reproduce or test, but keep it short.
-        - Ask up to 3 direct QUESTIONS if information is missing.
+        - Ask up to 3 direct QUESTIONS if information is missing. State that we are waiting for the author or reviewer to reply to proceed.
         - Suggest 1–3 short labels (single words) such as `bug`, `feature`, `docs`, `usage`, `help`, `tool`.
 
       5) Format output in the following structured sections (concise and clear):

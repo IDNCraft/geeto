@@ -119,6 +119,20 @@ const COMMAND_REGISTRY: CommandEntry[] = [
     errorLabel: 'PR',
   },
   {
+    flag: '--review-pr',
+    alias: '-rvp',
+    module: './workflows/review-pr.js',
+    handler: 'handleReviewPR',
+    errorLabel: 'Review PR',
+  },
+  {
+    flag: '--review-issue',
+    alias: '-rvi',
+    module: './workflows/review-issue.js',
+    handler: 'handleReviewIssue',
+    errorLabel: 'Review Issue',
+  },
+  {
     flag: '--issue',
     alias: '-i',
     module: './workflows/issue.js',
@@ -458,6 +472,10 @@ function showHelpMessage(): void {
 
   console.log(`  ${B}GITHUB / GITLAB${R}`)
   console.log(`    ${C}-pr, --pr${R}                 Create a Pull Request / Merge Request`)
+  console.log(
+    `    ${C}-rvp, --review-pr${R}         Review and comment Pull Request / Merge Request with AI`
+  )
+  console.log(`    ${C}-rvi, --review-issue${R}      Review and comment Issue with AI`)
   console.log(`    ${C}-i,  --issue${R}              Create an Issue`)
   console.log(`    ${C}-t,  --tag${R}                Release & tag manager with semver`)
   console.log(`    ${C}-rp, --repo${R}               Update repo settings`)
@@ -524,6 +542,8 @@ const MODULE_LOADERS: Record<
   './workflows/compare.js': () => import('./workflows/compare.js'),
   './workflows/cherry-pick.js': () => import('./workflows/cherry-pick.js'),
   './workflows/pr.js': () => import('./workflows/pr.js'),
+  './workflows/review-pr.js': () => import('./workflows/review-pr.js'),
+  './workflows/review-issue.js': () => import('./workflows/review-issue.js'),
   './workflows/issue.js': () => import('./workflows/issue.js'),
   './workflows/history.js': () => import('./workflows/history.js'),
   './workflows/stash.js': () => import('./workflows/stash.js'),

@@ -27,6 +27,17 @@ Replaces direct API/CLI calls for Copilot and Gemini with SDK integrations.
 This simplifies code, improves maintainability, and adds dynamic model
 fetching. Updates .gitignore for geeto binaries.
 `,
+  'issue-prompt-review.md': `Act as a project issue reviewer. Review the provided issue title and description/body.
+Keep the tone natural, conversational, and direct, like a friendly project maintainer or senior engineer checking an issue submitted by a user. Avoid boilerplate structures, long greeting summaries, or repetitive list labels unless requested.
+
+Perform the following assessment and provide a concise structured feedback to help triage:
+1. Identify/verify the issue category: bug, feature, docs, or usage. State it clearly, e.g. "I've labeled this as [category]. The team will review and follow up with next steps."
+2. For bugs: state severity (low/med/high) and check if reproduction steps are present or missing.
+3. Suggest 1-3 labels (e.g. bug, feature, improvement, triage).
+4. Suggest next steps or ask up to 3 questions if info is missing. State that we are waiting for the author or reviewer to reply to proceed.
+
+Your feedback must be formatted in clean Markdown.
+Start by thanking/greeting the user using their handle if available (e.g., "Thanks for opening this issue, @author!"). Keep it helpful and concise.`,
   'issue-prompt.md': `Generate a GitHub Issue title and body from this description.
 IMPORTANT: Always write in English regardless of the input language.
 Output ONLY in this exact format (no extra markers):
@@ -82,7 +93,7 @@ BODY:
 
       For the given issue ({{input}}), perform the following checks and provide a concise structured output.
 
-      1) Categorize the issue as one of: \`bug\`, \`feature request\`, \`docs\`, \`usage/help\`, or \`other\`.
+      1) Categorize the issue as one of: \`bug\`, \`feature request\`, \`docs\`, \`usage/help\`, or \`other\`. State it clearly, e.g. "I've labeled this as [category]. The team will review and follow up with next steps."
 
       2) For BUGs:
         - Determine severity: \`critical\` / \`high\` / \`medium\` / \`low\`.
@@ -98,7 +109,7 @@ BODY:
 
       4) For ALL issues:
         - If relevant, extract a brief \`How to use (from README):\` block (2–6 commands) to help reproduce or test, but keep it short.
-        - Ask up to 3 direct QUESTIONS if information is missing.
+        - Ask up to 3 direct QUESTIONS if information is missing. State that we are waiting for the author or reviewer to reply to proceed.
         - Suggest 1–3 short labels (single words) such as \`bug\`, \`feature\`, \`docs\`, \`usage\`, \`help\`, \`tool\`.
 
       5) Format output in the following structured sections (concise and clear):
@@ -177,5 +188,18 @@ Formatting (follow EXACTLY — this is markdownlint-compliant):
 - Improvement here
 `,
   'repo-description-prompt.md': `Analyze this README and write a short GitHub repo description (max 150 chars). Concise, informative. Output ONLY the text, no quotes.
+`,
+  'review-prompt.md': `Act as a code reviewer. Review the provided git diff for a Pull Request / Merge Request.
+Start the review by mentioning the author using their handler (e.g. "Hi @author, ..."). Keep the tone natural, conversational, and direct, like a human senior engineer reviewing a teammate's PR. Avoid rigid academic formats, excessive robotic lists, or boilerplate summaries. Write clearly and concisely.
+
+Focus on:
+1. Potential bugs, logic errors, and edge cases.
+2. Code quality, readability, maintainability, and clean code principles.
+3. Performance issues or unnecessary resource usage.
+4. Security vulnerabilities.
+
+Provide constructive feedback. Group by files if appropriate.
+Your output must be formatted in Markdown.
+If the changes are good, praise the author and approve clearly.
 `,
 }

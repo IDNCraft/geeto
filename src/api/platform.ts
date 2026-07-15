@@ -7,7 +7,10 @@ import type { Platform } from '../types/index.js'
 import {
   createIssue as ghCreateIssue,
   createPullRequest as ghCreatePR,
+  createPRComment as ghCreatePRComment,
   getDefaultBranch as ghGetDefaultBranch,
+  getPullRequestDiff as ghGetPullRequestDiff,
+  listIssues as ghListIssues,
   listLabels as ghListLabels,
   listPullRequests as ghListPRs,
   parseRepoFromUrl,
@@ -15,8 +18,12 @@ import {
 import {
   encodeProjectPath,
   createIssue as glCreateIssue,
+  createIssueComment as glCreateIssueComment,
   createMergeRequest as glCreateMR,
+  createMRComment as glCreateMRComment,
   getDefaultBranch as glGetDefaultBranch,
+  getMergeRequestDiff as glGetMergeRequestDiff,
+  listIssues as glListIssues,
   listLabels as glListLabels,
   listMergeRequests as glListMRs,
   parseGitlabRepoFromUrl,
@@ -74,6 +81,7 @@ export interface PlatformIssue {
   number: number
   url: string
   title: string
+  body: string
   state: string
   author: string
   createdAt: string
@@ -97,7 +105,28 @@ export interface PlatformAPI {
   ): Promise<PlatformPR[]>
   getDefaultBranch(projectPath: string, owner?: string, repo?: string): Promise<string | null>
   createIssue(params: PlatformIssueParams): Promise<PlatformIssue | null>
+  listIssues(projectPath: string, owner?: string, repo?: string): Promise<PlatformIssue[]>
   listLabels(projectPath: string, owner?: string, repo?: string): Promise<PlatformLabel[]>
+  getPRDiff(
+    projectPath: string,
+    number: number,
+    owner?: string,
+    repo?: string
+  ): Promise<string | null>
+  createPRComment(
+    projectPath: string,
+    number: number,
+    body: string,
+    owner?: string,
+    repo?: string
+  ): Promise<boolean>
+  createIssueComment(
+    projectPath: string,
+    number: number,
+    body: string,
+    owner?: string,
+    repo?: string
+  ): Promise<boolean>
 }
 
 // ── Platform Detection ───────────────────────────────────────────────
@@ -219,11 +248,28 @@ const createGitHubAPI = (): PlatformAPI => ({
       number: result.number,
       url: result.html_url,
       title: result.title,
+      body: result.body || '',
       state: result.state,
       author: result.user.login,
       createdAt: result.created_at,
       labels: result.labels.map((l) => l.name),
     }
+  },
+
+  async listIssues(_projectPath, owner, repo) {
+    if (!owner || !repo) return []
+
+    const results = await ghListIssues(owner, repo)
+    return results.map((issue) => ({
+      number: issue.number,
+      url: issue.html_url,
+      title: issue.title,
+      body: issue.body || '',
+      state: issue.state,
+      author: issue.user.login,
+      createdAt: issue.created_at,
+      labels: issue.labels.map((l) => l.name),
+    }))
   },
 
   async listLabels(_projectPath, owner, repo) {
@@ -235,6 +281,21 @@ const createGitHubAPI = (): PlatformAPI => ({
       color: l.color,
       description: l.description,
     }))
+  },
+
+  async getPRDiff(_projectPath, number, owner, repo) {
+    if (!owner || !repo) return null
+    return ghGetPullRequestDiff(owner, repo, number)
+  },
+
+  async createPRComment(_projectPath, number, body, owner, repo) {
+    if (!owner || !repo) return false
+    return ghCreatePRComment(owner, repo, number, body)
+  },
+
+  async createIssueComment(_projectPath, number, body, owner, repo) {
+    if (!owner || !repo) return false
+    return ghCreatePRComment(owner, repo, number, body)
   },
 })
 
@@ -299,11 +360,26 @@ const createGitLabAPI = (): PlatformAPI => ({
       number: result.iid,
       url: result.web_url,
       title: result.title,
+      body: result.description || '',
       state: result.state,
       author: result.author.username,
       createdAt: result.created_at,
       labels: result.labels,
     }
+  },
+
+  async listIssues(projectPath) {
+    const results = await glListIssues(projectPath)
+    return results.map((issue) => ({
+      number: issue.iid,
+      url: issue.web_url,
+      title: issue.title,
+      body: issue.description || '',
+      state: issue.state,
+      author: issue.author.username,
+      createdAt: issue.created_at,
+      labels: issue.labels,
+    }))
   },
 
   async listLabels(projectPath) {
@@ -313,6 +389,18 @@ const createGitLabAPI = (): PlatformAPI => ({
       color: l.color,
       description: l.description,
     }))
+  },
+
+  async getPRDiff(projectPath, number) {
+    return glGetMergeRequestDiff(projectPath, number)
+  },
+
+  async createPRComment(projectPath, number, body) {
+    return glCreateMRComment(projectPath, number, body)
+  },
+
+  async createIssueComment(projectPath, number, body) {
+    return glCreateIssueComment(projectPath, number, body)
   },
 })
 

@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.13.0](https://github.com/rust142/geeto/compare/v0.12.0...v0.13.0) (2026-07-15)
+
+### Features
+
+* feat(ai): add AI-powered PR and issue review workflows ([b2ecc6b](https://github.com/rust142/geeto/commit/b2ecc6b))
+
+### Other Changes
+
+* docs(readme): update description and feature list for clarity ([fbfc462](https://github.com/rust142/geeto/commit/fbfc462))
+
 ## [0.12.0](https://github.com/rust142/geeto/compare/v0.11.0...v0.12.0) (2026-07-14)
 
 ### Features

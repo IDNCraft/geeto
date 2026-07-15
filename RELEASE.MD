@@ -1,5 +1,19 @@
 # Releases
 
+## v0.13.0 — July 16, 2026
+
+### What's New?
+
+#### New Features
+
+- Added AI-powered pull request and issue review workflows
+
+#### Other Improvements
+
+- Updated the description and feature list in the readme for clarity
+
+---
+
 ## v0.12.0 — July 14, 2026
 
 ### What's New?

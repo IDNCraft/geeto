@@ -165,6 +165,7 @@ export const select = async (question: string, options: SelectOption[]): Promise
     }
 
     // Initial render (question + items + hint)
+    console.log('')
     console.log(`${colors.cyan}?${colors.reset} ${question}`)
     {
       let initLines = 0
@@ -571,6 +572,7 @@ export const multiSelect = async (
     }
 
     // Print question line
+    console.log('')
     console.log(`${colors.cyan}?${colors.reset} ${question}`)
 
     // Initial render

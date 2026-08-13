@@ -110,17 +110,15 @@ export const handleBranchNaming = async (
       console.log('')
     }
 
-    const spinner = new ScrambleProgress()
-    spinner.start([
-      `Generating branch name with ${getAIProviderShortName(aiProvider)}${modelDisplay ? ` (${modelDisplay})` : ''}`,
-    ])
-
     // Only call provider to regenerate when not skipping (e.g., user selected Back)
     if (skipRegenerate) {
       // consume the skip once - will reuse existing aiSuffix
       skipRegenerate = false
-      spinner.stop()
     } else {
+      const spinner = new ScrambleProgress()
+      spinner.start([
+        `Analyzing changes with ${getAIProviderShortName(aiProvider)}${modelDisplay ? ` (${modelDisplay})` : ''}`,
+      ])
       aiSuffix = null
       try {
         switch (aiProvider) {
@@ -232,9 +230,6 @@ export const handleBranchNaming = async (
 
     if (!contextLimitDetected) {
       log.ai(`Suggested: ${colors.cyan}${colors.bright}${currentSuggestion}${colors.reset}`)
-      log.info(
-        'Incorrect Suggestion? check .geeto/last-ai-suggestion.json (possible AI/context limit).\n'
-      )
     }
 
     if (contextLimitDetected) {
@@ -378,6 +373,12 @@ export const handleBranchNaming = async (
 
       switch (acceptAi) {
         case 'accept': {
+          const { branchExists } = await import('./git.js')
+          if (branchExists(currentSuggestion)) {
+            log.error(`Branch '${currentSuggestion}' already exists locally`)
+            skipRegenerate = true
+            continue
+          }
           result.workingBranch = currentSuggestion
           break
         }

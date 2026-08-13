@@ -45,8 +45,6 @@ class Spinner {
     process.stdout.write('\u001B[?25h') // Show cursor
     if (finalMessage) {
       console.log(finalMessage)
-    } else {
-      process.stdout.write('\n') // Move to next line when no final message
     }
   }
 
@@ -61,7 +59,7 @@ class Spinner {
 
 export const log = {
   info: (msg: string) => {
-    console.log(`${colors.blue}ℹ${colors.reset} ${msg}`)
+    console.log(`${colors.blue}›${colors.reset} ${msg}`)
   },
   success: (msg: string) => {
     console.log(`${colors.green}✓${colors.reset} ${msg}`)
@@ -76,7 +74,7 @@ export const log = {
     console.log(`\n${colors.cyan}${colors.bright}▶ ${msg}${colors.reset}`)
   },
   ai: (msg: string) => {
-    console.log(`${colors.cyan}[AI]${colors.reset} ${msg}`)
+    console.log(`${colors.cyan}${colors.bright}✦ AI${colors.reset} ${msg}`)
   },
   /** Print a dim horizontal rule for visual separation. */
   divider: () => {

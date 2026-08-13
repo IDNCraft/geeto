@@ -545,9 +545,7 @@ export async function interactiveAIFallback(
         currentModel = chosen as GeminiModel
         updateModel?.('gemini', chosen as GeminiModel)
         const spinner = new ScrambleProgress()
-        spinner.start([
-          `${isCommit ? 'Generating commit message' : 'Generating branch name'} with Gemini (${chosen})`,
-        ])
+        spinner.start([`Analyzing changes with Gemini (${chosen})`])
 
         if (isCommit) {
           const res = await generateCommitMessage(diff, correction, chosen as GeminiModel)
@@ -582,9 +580,7 @@ export async function interactiveAIFallback(
         currentModel = chosen as OpenRouterModel
         updateModel?.('openrouter', chosen as OpenRouterModel)
         const spinner = new ScrambleProgress()
-        spinner.start([
-          `${isCommit ? 'Generating commit message' : 'Generating branch name'} with OpenRouter (${chosen})`,
-        ])
+        spinner.start([`Analyzing changes with OpenRouter (${chosen})`])
 
         if (isCommit) {
           const res = await generateCommitMessage(diff, correction, chosen as OpenRouterModel)
@@ -618,9 +614,7 @@ export async function interactiveAIFallback(
         currentModel = chosen
         updateModel?.('groq', chosen)
         const spinner = new ScrambleProgress()
-        spinner.start([
-          `${isCommit ? 'Generating commit message' : 'Generating branch name'} with Groq (${chosen})`,
-        ])
+        spinner.start([`Analyzing changes with Groq (${chosen})`])
         if (isCommit) {
           aiSuffix = await generateCommitMessage(diff, correction, chosen)
         } else {
@@ -647,9 +641,7 @@ export async function interactiveAIFallback(
         currentModel = chosen
         updateModel?.('codex', chosen)
         const spinner = new ScrambleProgress()
-        spinner.start([
-          `${isCommit ? 'Generating commit message' : 'Generating branch name'} with Codex`,
-        ])
+        spinner.start(['Analyzing changes with OpenAI Codex'])
         if (isCommit) {
           aiSuffix = await generateCommitMessage(diff, correction, chosen)
         } else {
@@ -676,9 +668,7 @@ export async function interactiveAIFallback(
         currentModel = chosen
         updateModel?.('opencode-zen', chosen)
         const spinner = new ScrambleProgress()
-        spinner.start([
-          `${isCommit ? 'Generating commit message' : 'Generating branch name'} with OpenCode Zen (${chosen})`,
-        ])
+        spinner.start([`Analyzing changes with OpenCode Zen (${chosen})`])
         if (isCommit) {
           aiSuffix = await generateCommitMessage(diff, correction, chosen)
         } else {
@@ -737,9 +727,7 @@ export async function interactiveAIFallback(
           currentModel = chosenModel as GeminiModel
           updateModel?.('gemini', chosenModel as GeminiModel)
           const spinner = new ScrambleProgress()
-          spinner.start([
-            `${isCommit ? 'Generating commit message' : 'Generating branch name'} with Gemini (${chosenModel})`,
-          ])
+          spinner.start([`Analyzing changes with Gemini (${chosenModel})`])
 
           if (isCommit) {
             // Use built-in Gemini API for commit generation
@@ -778,9 +766,7 @@ export async function interactiveAIFallback(
           currentModel = chosen as OpenRouterModel
           updateModel?.('openrouter', chosen as OpenRouterModel)
           const spinner = new ScrambleProgress()
-          spinner.start([
-            `${isCommit ? 'Generating commit message' : 'Generating branch name'} with OpenRouter (${chosen})`,
-          ])
+          spinner.start([`Analyzing changes with OpenRouter (${chosen})`])
           if (isCommit) {
             aiSuffix = await generateCommitMessage(diff, correction, chosen as OpenRouterModel)
           } else {
@@ -811,9 +797,7 @@ export async function interactiveAIFallback(
           currentModel = chosen
           updateModel?.('groq', chosen)
           const spinner = new ScrambleProgress()
-          spinner.start([
-            `${isCommit ? 'Generating commit message' : 'Generating branch name'} with Groq (${chosen})`,
-          ])
+          spinner.start([`Analyzing changes with Groq (${chosen})`])
           if (isCommit) {
             aiSuffix = await generateCommitMessage(diff, correction, chosen)
           } else {
@@ -847,9 +831,7 @@ export async function interactiveAIFallback(
           currentModel = chosen
           updateModel?.('codex', chosen)
           const spinner = new ScrambleProgress()
-          spinner.start([
-            `${isCommit ? 'Generating commit message' : 'Generating branch name'} with Codex`,
-          ])
+          spinner.start(['Analyzing changes with OpenAI Codex'])
           if (isCommit) {
             aiSuffix = await generateCommitMessage(diff, correction, chosen)
           } else {
@@ -880,9 +862,7 @@ export async function interactiveAIFallback(
           currentModel = chosen
           updateModel?.('opencode-zen', chosen)
           const spinner = new ScrambleProgress()
-          spinner.start([
-            `${isCommit ? 'Generating commit message' : 'Generating branch name'} with OpenCode Zen (${chosen})`,
-          ])
+          spinner.start([`Analyzing changes with OpenCode Zen (${chosen})`])
           if (isCommit) {
             aiSuffix = await generateCommitMessage(diff, correction, chosen)
           } else {

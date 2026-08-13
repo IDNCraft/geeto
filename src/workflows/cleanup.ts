@@ -326,11 +326,17 @@ export const handleInteractiveCleanup = async (): Promise<void> => {
         const spinner = log.spinner()
         spinner.start(`Deleting remote: ${branch.name}...`)
         try {
-          await execAsync(`git push origin --delete "${branch.name}"`, true)
+          await execAsync(`git push --no-verify origin --delete "${branch.name}"`, true)
           spinner.succeed(`Deleted remote: ${branch.name}`)
           remoteSuccessCount++
-        } catch {
+        } catch (error) {
           spinner.fail(`Failed to delete remote: ${branch.name}`)
+          const stderr = (error as { stderr?: string }).stderr?.trim()
+          const detail = stderr
+            ?.split('\n')
+            .map((line) => line.trim())
+            .find((line) => line && !line.startsWith('error: failed to push'))
+          if (detail) log.error(`  ${detail}`)
           remoteFailCount++
         }
       } catch {
@@ -354,9 +360,6 @@ export const handleInteractiveCleanup = async (): Promise<void> => {
     console.log(
       `  Remote: ${colors.green}${remoteSuccessCount}/${remoteTotal} deleted${colors.reset}${remoteFailCount > 0 ? `, ${colors.red}${remoteFailCount} failed${colors.reset}` : ''}`
     )
-  }
-  if (remoteFailCount > 0) {
-    log.info('  Try prune with: gt --prune')
   }
   console.log('')
 

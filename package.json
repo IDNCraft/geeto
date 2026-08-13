@@ -118,7 +118,7 @@
     "bun": ">=1.0.0"
   },
   "dependencies": {
-    "@google/genai": "^1.42.0",
+    "@google/genai": "^2.16.0",
     "@openai/codex-sdk": "^0.144.3",
     "@opencode-ai/sdk": "1.18.16",
     "openai": "^6.39.1",

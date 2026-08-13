@@ -52,12 +52,12 @@ export const main = async (opts?: MainOpts): Promise<void> => {
     } else {
       while (true) {
         const mainChoices = [
-          { label: 'Start new workflow', value: 'start' },
-          { label: 'Settings', value: 'settings' },
-          { label: 'Exit', value: 'exit' },
+          { label: 'Start a new Git workflow', value: 'start' },
+          { label: 'Configure providers, integrations, and defaults', value: 'settings' },
+          { label: 'Exit Geeto', value: 'exit' },
         ]
 
-        initialChoice = await select('Welcome to Geeto! What would you like to do?', mainChoices)
+        initialChoice = await select('Choose your next Geeto action:', mainChoices)
 
         if (initialChoice === 'exit' || initialChoice === 'back') {
           log.info('Goodbye!')
@@ -85,10 +85,11 @@ export const main = async (opts?: MainOpts): Promise<void> => {
     // Resolve AI provider and checkpoint state
     const {
       aiProvider,
-      copilotModel,
       openrouterModel,
       geminiModel,
       groqModel,
+      codexModel,
+      opencodeModel,
       shouldResume,
       suppressStagingDoneMessage,
       savedState,
@@ -103,10 +104,11 @@ export const main = async (opts?: MainOpts): Promise<void> => {
       currentBranch: actualBranch,
       timestamp: new Date().toISOString(),
       aiProvider,
-      copilotModel,
       openrouterModel,
       geminiModel,
       groqModel,
+      codexModel,
+      opencodeModel,
     }
 
     if (shouldResume && savedState) {
@@ -121,10 +123,11 @@ export const main = async (opts?: MainOpts): Promise<void> => {
           currentBranch: actualBranch,
           // Preserve provider selection from new selection or savedState
           aiProvider,
-          copilotModel,
           openrouterModel,
           geminiModel,
           groqModel,
+          codexModel,
+          opencodeModel,
         }
         saveState(state)
       } else {
@@ -134,10 +137,11 @@ export const main = async (opts?: MainOpts): Promise<void> => {
           currentBranch: actualBranch,
           // Preserve provider selection from new selection or savedState
           aiProvider,
-          copilotModel,
           openrouterModel,
           geminiModel,
           groqModel,
+          codexModel,
+          opencodeModel,
         }
         // Save state if provider info was just selected
         if (!savedState.aiProvider && aiProvider) {

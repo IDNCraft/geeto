@@ -109,11 +109,11 @@ export const handleCherryPick = async (): Promise<void> => {
     log.warn('A cherry-pick is already in progress!')
     console.log('')
 
-    const action = await select('What would you like to do?', [
-      { label: 'Continue cherry-pick (after resolving conflicts)', value: 'continue' },
-      { label: 'Abort cherry-pick', value: 'abort' },
-      { label: 'Skip current commit', value: 'skip' },
-      { label: 'Cancel', value: 'cancel' },
+    const action = await select('Cherry-pick is in progress. Choose the next step:', [
+      { label: 'Continue after resolving conflicts', value: 'continue' },
+      { label: 'Abort and discard this cherry-pick', value: 'abort' },
+      { label: 'Skip the current commit', value: 'skip' },
+      { label: 'Leave cherry-pick in progress', value: 'cancel' },
     ])
 
     switch (action) {
@@ -123,7 +123,7 @@ export const handleCherryPick = async (): Promise<void> => {
           log.success('Cherry-pick continued successfully!')
         } catch (error) {
           log.error(`Failed to continue: ${error}`)
-          log.info('Resolve conflicts and try again.')
+          log.info('Resolve conflicts, stage the files, then choose Continue again.')
         }
         break
       }
@@ -205,7 +205,7 @@ export const handleCherryPick = async (): Promise<void> => {
   const selectedHashes = await multiSelect('Select commits to cherry-pick:', commitOptions)
 
   if (selectedHashes.length === 0) {
-    log.info('No commits selected. Cancelled.')
+    log.info('No commits selected; cherry-pick was not started.')
     return
   }
 

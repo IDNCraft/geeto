@@ -10,7 +10,6 @@ import { execSync, spawnSync } from 'node:child_process'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import type { CopilotModel } from '../api/copilot.js'
 import type { GeminiModel } from '../api/gemini.js'
 import type { OpenRouterModel } from '../api/openrouter.js'
 import type { GeetoState } from '../types/index.js'
@@ -319,15 +318,15 @@ interface RewordContext {
 const resolveAIProvider = (
   state: GeetoState
 ): {
-  provider: 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'codex'
+  provider: 'gemini' | 'openrouter' | 'groq' | 'codex' | 'opencode-zen'
   model: string | undefined
 } => {
-  const provider: 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'codex' =
+  const provider: 'gemini' | 'openrouter' | 'groq' | 'codex' | 'opencode-zen' =
     (state.aiProvider === 'manual' ? undefined : state.aiProvider) ?? 'gemini'
 
-  if (provider === 'copilot') return { provider, model: state.copilotModel as unknown as string }
   if (provider === 'groq') return { provider, model: state.groqModel ?? undefined }
   if (provider === 'codex') return { provider, model: state.codexModel ?? undefined }
+  if (provider === 'opencode-zen') return { provider, model: state.opencodeModel ?? undefined }
   if (provider === 'openrouter')
     return { provider, model: state.openrouterModel as unknown as string }
   return { provider, model: (state.geminiModel as unknown as string) ?? DEFAULT_GEMINI_MODEL }
@@ -364,9 +363,7 @@ const regenerateDirect = async (
 
   for (let attempt = 0; attempt < maxAttempts && !aiResult; attempt++) {
     let modelName = ''
-    if (state.aiProvider === 'copilot' && state.copilotModel) {
-      modelName = state.copilotModel as string
-    } else if (state.aiProvider === 'openrouter' && state.openrouterModel) {
+    if (state.aiProvider === 'openrouter' && state.openrouterModel) {
       modelName = state.openrouterModel as string
     } else
       switch (state.aiProvider) {
@@ -377,6 +374,11 @@ const regenerateDirect = async (
         }
         case 'codex': {
           modelName = state.codexModel ?? ''
+
+          break
+        }
+        case 'opencode-zen': {
+          modelName = state.opencodeModel ?? ''
 
           break
         }
@@ -396,15 +398,6 @@ const regenerateDirect = async (
 
     try {
       switch (state.aiProvider) {
-        case 'copilot': {
-          const { generateCommitMessage } = await import('../api/copilot.js')
-          aiResult = await generateCommitMessage(
-            diff,
-            correction,
-            state.copilotModel as CopilotModel
-          )
-          break
-        }
         case 'openrouter': {
           const { generateCommitMessage } = await import('../api/openrouter.js')
           aiResult = await generateCommitMessage(
@@ -427,6 +420,11 @@ const regenerateDirect = async (
         case 'codex': {
           const { generateCommitMessage } = await import('../api/codex.js')
           aiResult = await generateCommitMessage(diff, correction, state.codexModel)
+          break
+        }
+        case 'opencode-zen': {
+          const { generateCommitMessage } = await import('../api/opencode.js')
+          aiResult = await generateCommitMessage(diff, correction, state.opencodeModel)
           break
         }
         default: {
@@ -657,7 +655,9 @@ const generateNewMessages = async (
     console.log('')
 
     // Ask what user wants to change before generating
-    const editGuidance = askQuestion('What would you like to change? (empty = auto-generate): ')
+    const editGuidance = askQuestion(
+      'Optional guidance for the rewritten commit message (empty = auto-generate): '
+    )
 
     const diff = getCommitDiff(commit.hash)
     if (!diff) {
@@ -687,11 +687,12 @@ const generateNewMessages = async (
         currentProvider,
         diff,
         correction,
-        state.copilotModel as CopilotModel,
+        undefined,
         state.openrouterModel as OpenRouterModel,
         state.geminiModel as GeminiModel,
         state.groqModel,
-        state.codexModel
+        state.codexModel,
+        state.opencodeModel
       )
       spinner.stop()
     } catch {
@@ -730,17 +731,12 @@ const generateNewMessages = async (
       } else {
         const provForFallback = (state.aiProvider ?? 'gemini') as
           | 'gemini'
-          | 'copilot'
           | 'openrouter'
           | 'groq'
           | 'codex'
-        let modelChoice: CopilotModel | OpenRouterModel | GeminiModel | string
+          | 'opencode-zen'
+        let modelChoice: OpenRouterModel | GeminiModel | string
         switch (provForFallback) {
-          case 'copilot': {
-            modelChoice = state.copilotModel as CopilotModel
-
-            break
-          }
           case 'openrouter': {
             modelChoice = state.openrouterModel as OpenRouterModel
 
@@ -753,6 +749,11 @@ const generateNewMessages = async (
           }
           case 'codex': {
             modelChoice = state.codexModel ?? ''
+
+            break
+          }
+          case 'opencode-zen': {
+            modelChoice = state.opencodeModel ?? ''
 
             break
           }
@@ -773,14 +774,12 @@ const generateNewMessages = async (
           diff,
           correction,
           branch,
-          (provider: 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'codex', model?: string) => {
+          (
+            provider: 'gemini' | 'openrouter' | 'groq' | 'codex' | 'opencode-zen',
+            model?: string
+          ) => {
             state.aiProvider = provider
             switch (provider) {
-              case 'copilot': {
-                state.copilotModel = model as CopilotModel
-                state.codexModel = undefined
-                break
-              }
               case 'openrouter': {
                 state.openrouterModel = model as OpenRouterModel
                 state.codexModel = undefined
@@ -869,13 +868,13 @@ const generateNewMessages = async (
           { label: 'Edit manually', value: 'edit' },
         ])
       } else {
-        acceptChoice = await select('Accept this commit message?', [
-          { label: 'Yes, use it', value: 'accept' },
-          { label: 'Regenerate', value: 'regenerate' },
-          { label: 'Edit inline', value: 'edit' },
-          { label: 'Correct AI (give feedback)', value: 'correct' },
-          { label: 'Change model', value: 'change-model' },
-          { label: 'Change AI provider', value: 'change-provider' },
+        acceptChoice = await select('Choose what to do with this commit message:', [
+          { label: 'Use this commit message', value: 'accept' },
+          { label: 'Generate a new commit message', value: 'regenerate' },
+          { label: 'Edit the commit message', value: 'edit' },
+          { label: 'Give AI feedback', value: 'correct' },
+          { label: 'Switch model', value: 'change-model' },
+          { label: 'Switch AI provider', value: 'change-provider' },
         ])
       }
 
@@ -898,14 +897,11 @@ const generateNewMessages = async (
         case 'change-provider': {
           const prov = await select('Choose AI provider:', [
             { label: 'Gemini', value: 'gemini' },
-            {
-              label: 'GitHub Copilot',
-              value: 'copilot',
-            },
             { label: 'OpenRouter', value: 'openrouter' },
             { label: 'Groq', value: 'groq' },
-            { label: 'Codex', value: 'codex' },
-            { label: 'Back', value: 'back' },
+            { label: 'OpenAI Codex', value: 'codex' },
+            { label: 'OpenCode Zen', value: 'opencode-zen' },
+            { label: 'Back to message review', value: 'back' },
           ])
 
           if (prov === 'back') {
@@ -914,9 +910,9 @@ const generateNewMessages = async (
           }
 
           const chosenModel = await chooseModelForProvider(
-            prov as 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'codex',
+            prov as 'gemini' | 'openrouter' | 'groq' | 'codex' | 'opencode-zen',
             'Choose model:',
-            'Back'
+            'Back to provider list'
           )
 
           if (!chosenModel || chosenModel === 'back') {
@@ -924,21 +920,11 @@ const generateNewMessages = async (
             continue
           }
 
-          state.aiProvider = prov as 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'codex'
-          currentProvider = prov as 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'codex'
+          state.aiProvider = prov as 'gemini' | 'openrouter' | 'groq' | 'codex' | 'opencode-zen'
+          currentProvider = prov as 'gemini' | 'openrouter' | 'groq' | 'codex' | 'opencode-zen'
           switch (prov) {
-            case 'copilot': {
-              state.copilotModel = chosenModel as unknown as CopilotModel
-              state.openrouterModel = undefined
-              state.geminiModel = undefined
-              state.groqModel = undefined
-              state.codexModel = undefined
-              currentModel = chosenModel
-              break
-            }
             case 'openrouter': {
               state.openrouterModel = chosenModel as unknown as OpenRouterModel
-              state.copilotModel = undefined
               state.geminiModel = undefined
               state.groqModel = undefined
               state.codexModel = undefined
@@ -947,7 +933,6 @@ const generateNewMessages = async (
             }
             case 'groq': {
               state.groqModel = chosenModel
-              state.copilotModel = undefined
               state.openrouterModel = undefined
               state.geminiModel = undefined
               state.codexModel = undefined
@@ -956,16 +941,23 @@ const generateNewMessages = async (
             }
             case 'codex': {
               state.codexModel = chosenModel
-              state.copilotModel = undefined
               state.openrouterModel = undefined
               state.geminiModel = undefined
               state.groqModel = undefined
               currentModel = chosenModel
               break
             }
+            case 'opencode-zen': {
+              state.opencodeModel = chosenModel
+              state.openrouterModel = undefined
+              state.geminiModel = undefined
+              state.groqModel = undefined
+              state.codexModel = undefined
+              currentModel = chosenModel
+              break
+            }
             case 'gemini': {
               state.geminiModel = chosenModel as unknown as GeminiModel
-              state.copilotModel = undefined
               state.openrouterModel = undefined
               state.groqModel = undefined
               state.codexModel = undefined
@@ -982,13 +974,13 @@ const generateNewMessages = async (
         case 'change-model': {
           const provKey = (
             currentProvider === 'gemini' ||
-            currentProvider === 'copilot' ||
             currentProvider === 'openrouter' ||
             currentProvider === 'groq' ||
-            currentProvider === 'codex'
+            currentProvider === 'codex' ||
+            currentProvider === 'opencode-zen'
               ? currentProvider
               : 'gemini'
-          ) as 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'codex'
+          ) as 'gemini' | 'openrouter' | 'groq' | 'codex' | 'opencode-zen'
 
           const chosen = await chooseModelForProvider(provKey, 'Choose model:', 'Back')
 
@@ -998,12 +990,6 @@ const generateNewMessages = async (
           }
 
           switch (provKey) {
-            case 'copilot': {
-              state.copilotModel = chosen as unknown as CopilotModel
-              state.codexModel = undefined
-              currentModel = chosen
-              break
-            }
             case 'openrouter': {
               state.openrouterModel = chosen as unknown as OpenRouterModel
               state.codexModel = undefined
@@ -1023,8 +1009,16 @@ const generateNewMessages = async (
             }
             case 'gemini': {
               state.geminiModel = chosen as unknown as GeminiModel
-              state.copilotModel = undefined
               state.openrouterModel = undefined
+              state.groqModel = undefined
+              state.codexModel = undefined
+              currentModel = chosen
+              break
+            }
+            case 'opencode-zen': {
+              state.opencodeModel = chosen
+              state.openrouterModel = undefined
+              state.geminiModel = undefined
               state.groqModel = undefined
               state.codexModel = undefined
               currentModel = chosen
@@ -1231,7 +1225,9 @@ const executeRebase = async (
 
       // Offer force push
       console.log('')
-      const shouldPush = confirm('Force push to update remote? (recommended)')
+      const shouldPush = confirm(
+        `Force-push rewritten commit history to origin/${branch}? This replaces the remote branch history.`
+      )
       if (shouldPush) {
         if (isDryRun()) {
           logDryRun(`git push --force-with-lease origin ${branch}`)

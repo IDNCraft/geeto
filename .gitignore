@@ -63,10 +63,11 @@ index.js.map
 # Finder (MacOS) folder config
 .DS_Store
 
-# Snyk Security Extension - AI Rules (auto-generated)
-.github/instructions/snyk_rules.instructions.md
-
-# Trello-generated tasks
-.github/instructions/tasks.instructions.md
-.cursor/tasks.instructions.md
-.idea/tasks.instructions.md
+# Graphify cache / machine-local metadata (keep graph.json and manifest.json)
+graphify-out/cache/
+graphify-out/.graphify_root
+graphify-out/.graphify_python
+graphify-out/.graphify_detect.json
+graphify-out/.graphify_ast.json
+graphify-out/.graphify_semantic.json
+graphify-out/.graphify_analysis.json

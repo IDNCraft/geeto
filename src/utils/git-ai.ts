@@ -1,4 +1,3 @@
-import type { CopilotModel } from '../api/copilot.js'
 import type { GeminiModel } from '../api/gemini.js'
 import type { GroqModel } from '../api/groq.js'
 import type { OpenRouterModel } from '../api/openrouter.js'
@@ -14,9 +13,7 @@ export { isContextLimitFailure, isTransientAIFailure }
 // execGit not needed here
 
 /** Return the canonical string value for a model (object or string) */
-export function getModelValue(
-  m?: CopilotModel | OpenRouterModel | GeminiModel | string
-): string | undefined {
+export function getModelValue(m?: OpenRouterModel | GeminiModel | string): string | undefined {
   if (!m) {
     return undefined
   }
@@ -33,9 +30,6 @@ export function getAIProviderDisplayName(aiProvider: string): string {
     case 'gemini': {
       return 'Gemini'
     }
-    case 'copilot': {
-      return 'GitHub Copilot'
-    }
     case 'openrouter': {
       return 'OpenRouter'
     }
@@ -43,7 +37,10 @@ export function getAIProviderDisplayName(aiProvider: string): string {
       return 'Groq'
     }
     case 'codex': {
-      return 'Codex'
+      return 'OpenAI Codex'
+    }
+    case 'opencode-zen': {
+      return 'OpenCode Zen'
     }
     default: {
       return 'Manual'
@@ -57,9 +54,6 @@ export function getAIProviderShortName(aiProvider: string): string {
     case 'gemini': {
       return 'Gemini'
     }
-    case 'copilot': {
-      return 'GitHub Copilot'
-    }
     case 'openrouter': {
       return 'OpenRouter'
     }
@@ -67,7 +61,10 @@ export function getAIProviderShortName(aiProvider: string): string {
       return 'Groq'
     }
     case 'codex': {
-      return 'Codex'
+      return 'OpenAI Codex'
+    }
+    case 'opencode-zen': {
+      return 'OpenCode Zen'
     }
     default: {
       return 'Manual'
@@ -94,20 +91,17 @@ export async function generateBranchNameWithProvider(
   aiProvider: string,
   title: string,
   correction?: string,
-  copilotModel?: CopilotModel,
+  _model?: OpenRouterModel | GeminiModel | string,
   openrouterModel?: OpenRouterModel,
   geminiModel?: GeminiModel,
   groqModel?: GroqModel,
-  codexModel?: string
+  codexModel?: string,
+  opencodeModel?: string
 ): Promise<string | null> {
   switch (aiProvider) {
     case 'gemini': {
       const { generateBranchName } = await import('../api/gemini.js')
       return generateBranchName(title, correction, geminiModel as GeminiModel)
-    }
-    case 'copilot': {
-      const { generateBranchName } = await import('../api/copilot.js')
-      return generateBranchName(title, correction, copilotModel)
     }
     case 'groq': {
       const { generateBranchName } = await import('../api/groq.js')
@@ -116,6 +110,10 @@ export async function generateBranchNameWithProvider(
     case 'codex': {
       const { generateBranchName } = await import('../api/codex.js')
       return generateBranchName(title, correction, codexModel)
+    }
+    case 'opencode-zen': {
+      const { generateBranchName } = await import('../api/opencode.js')
+      return generateBranchName(title, correction, opencodeModel)
     }
     default: {
       const { generateBranchName } = await import('../api/openrouter.js')
@@ -129,20 +127,17 @@ export async function generateReleaseNotesWithProvider(
   commits: string,
   language: 'en' | 'id',
   correction?: string,
-  copilotModel?: CopilotModel,
+  _model?: OpenRouterModel | GeminiModel | string,
   openrouterModel?: OpenRouterModel,
   geminiModel?: GeminiModel,
   groqModel?: GroqModel,
-  codexModel?: string
+  codexModel?: string,
+  opencodeModel?: string
 ): Promise<string | null> {
   switch (aiProvider) {
     case 'gemini': {
       const { generateReleaseNotes } = await import('../api/gemini.js')
       return generateReleaseNotes(commits, language, correction, geminiModel as GeminiModel)
-    }
-    case 'copilot': {
-      const { generateReleaseNotes } = await import('../api/copilot.js')
-      return generateReleaseNotes(commits, language, correction, copilotModel)
     }
     case 'groq': {
       const { generateReleaseNotes } = await import('../api/groq.js')
@@ -151,6 +146,10 @@ export async function generateReleaseNotesWithProvider(
     case 'codex': {
       const { generateReleaseNotes } = await import('../api/codex.js')
       return generateReleaseNotes(commits, language, correction, codexModel)
+    }
+    case 'opencode-zen': {
+      const { generateReleaseNotes } = await import('../api/opencode.js')
+      return generateReleaseNotes(commits, language, correction, opencodeModel)
     }
     default: {
       const { generateReleaseNotes } = await import('../api/openrouter.js')
@@ -163,20 +162,17 @@ export async function generateReleaseNotesWithProvider(
 export async function generateTextWithProvider(
   aiProvider: string,
   prompt: string,
-  copilotModel?: CopilotModel,
+  _model?: OpenRouterModel | GeminiModel | string,
   openrouterModel?: OpenRouterModel,
   geminiModel?: GeminiModel,
   groqModel?: GroqModel,
-  codexModel?: string
+  codexModel?: string,
+  opencodeModel?: string
 ): Promise<string | null> {
   switch (aiProvider) {
     case 'gemini': {
       const { generateText } = await import('../api/gemini.js')
       return generateText(prompt, geminiModel as GeminiModel)
-    }
-    case 'copilot': {
-      const { generateText } = await import('../api/copilot.js')
-      return generateText(prompt, copilotModel)
     }
     case 'groq': {
       const { generateText } = await import('../api/groq.js')
@@ -185,6 +181,10 @@ export async function generateTextWithProvider(
     case 'codex': {
       const { generateText } = await import('../api/codex.js')
       return generateText(prompt, codexModel)
+    }
+    case 'opencode-zen': {
+      const { generateText } = await import('../api/opencode.js')
+      return generateText(prompt, opencodeModel)
     }
     default: {
       const { generateText } = await import('../api/openrouter.js')
@@ -198,20 +198,17 @@ export async function generateCommitMessageWithProvider(
   aiProvider: string,
   diff: string,
   correction?: string,
-  copilotModel?: CopilotModel,
+  _model?: OpenRouterModel | GeminiModel | string,
   openrouterModel?: OpenRouterModel,
   geminiModel?: GeminiModel,
   groqModel?: GroqModel,
-  codexModel?: string
+  codexModel?: string,
+  opencodeModel?: string
 ): Promise<string | null> {
   switch (aiProvider) {
     case 'gemini': {
       const { generateCommitMessage } = await import('../api/gemini.js')
       return generateCommitMessage(diff, correction, geminiModel as GeminiModel)
-    }
-    case 'copilot': {
-      const { generateCommitMessage } = await import('../api/copilot.js')
-      return generateCommitMessage(diff, correction, copilotModel)
     }
     case 'groq': {
       const { generateCommitMessage } = await import('../api/groq.js')
@@ -220,6 +217,10 @@ export async function generateCommitMessageWithProvider(
     case 'codex': {
       const { generateCommitMessage } = await import('../api/codex.js')
       return generateCommitMessage(diff, correction, codexModel)
+    }
+    case 'opencode-zen': {
+      const { generateCommitMessage } = await import('../api/opencode.js')
+      return generateCommitMessage(diff, correction, opencodeModel)
     }
     default: {
       const { generateCommitMessage } = await import('../api/openrouter.js')
@@ -233,14 +234,14 @@ export async function generateCommitMessageWithProvider(
  */
 export async function interactiveAIFallback(
   currentSuffix: string | null,
-  aiProvider: 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'codex',
-  model: CopilotModel | OpenRouterModel | GeminiModel | string,
+  aiProvider: 'gemini' | 'openrouter' | 'groq' | 'codex' | 'opencode-zen',
+  model: OpenRouterModel | GeminiModel | string,
   diff: string,
   correction: string,
   _currentBranch: string,
   updateModel: (
-    provider: 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'codex',
-    model?: CopilotModel | OpenRouterModel | GeminiModel | string
+    provider: 'gemini' | 'openrouter' | 'groq' | 'codex' | 'opencode-zen',
+    model?: OpenRouterModel | GeminiModel | string
   ) => void,
   isCommit: boolean = false
 ): Promise<string | null> {
@@ -251,7 +252,7 @@ export async function interactiveAIFallback(
   let aiSuffix = currentSuffix
   const failedModels = new Set<string>()
   // track the current model (may be a string or a provider-specific model object)
-  let currentModel: CopilotModel | OpenRouterModel | GeminiModel | string | undefined = model
+  let currentModel: OpenRouterModel | GeminiModel | string | undefined = model
 
   // Loop until manual pick or non-rate result
   while (true) {
@@ -267,7 +268,7 @@ export async function interactiveAIFallback(
         value: 'different-model',
       },
       { label: 'Try a different AI provider', value: 'different-provider' },
-      { label: 'Manual input', value: 'manual' },
+      { label: 'Enter the result manually', value: 'manual' },
     ]
 
     // If this failure is due to context/token limits, prefer forcing the user
@@ -308,16 +309,6 @@ export async function interactiveAIFallback(
             }
             break
           }
-          case 'copilot': {
-            const cop = await import('../api/copilot.js')
-            const models = await cop.getCopilotModels()
-            // Always offer all models (do not hide models marked as failed)
-            const available = models
-            if (available.length === 0) {
-              showDifferentModel = false
-            }
-            break
-          }
           case 'openrouter': {
             const open = await import('../api/openrouter.js')
             const models = await open.getOpenRouterModels()
@@ -348,7 +339,7 @@ export async function interactiveAIFallback(
             ]
           : []),
         { label: 'Try a different AI provider', value: 'different-provider' },
-        { label: 'Manual input', value: 'manual' },
+        { label: 'Enter the result manually', value: 'manual' },
       ]
     }
 
@@ -379,7 +370,7 @@ export async function interactiveAIFallback(
 
     let promptMsg: string
     if (aiSuffix === null || aiSuffix === undefined) {
-      promptMsg = `${shortName}${getModelValue(currentModel) ? ` (${getModelValue(currentModel)})` : ''} returned no suggestion. What would you like to do?`
+      promptMsg = `${shortName}${getModelValue(currentModel) ? ` (${getModelValue(currentModel)})` : ''} returned no suggestion. Retry, switch model/provider, or use manual input:`
     } else {
       const low = String(aiSuffix).toLowerCase()
       if (
@@ -390,10 +381,10 @@ export async function interactiveAIFallback(
         /subscription/.test(low)
       ) {
         // Rate/quota/subscription style problems
-        promptMsg = `${shortName}${getModelValue(currentModel) ? ` (${getModelValue(currentModel)})` : ''} is limited (rate/quota). What would you like to do?`
+        promptMsg = `${shortName}${getModelValue(currentModel) ? ` (${getModelValue(currentModel)})` : ''} is limited (rate/quota). Choose a recovery action:`
       } else {
         // Generic fallback message
-        promptMsg = `${shortName}${getModelValue(currentModel) ? ` (${getModelValue(currentModel)})` : ''} returned: ${aiSuffix}. What would you like to do?`
+        promptMsg = `${shortName}${getModelValue(currentModel) ? ` (${getModelValue(currentModel)})` : ''} returned an error. Retry, switch model/provider, or use manual input:`
       }
     }
 
@@ -425,31 +416,6 @@ export async function interactiveAIFallback(
               diff || 'Code changes',
               correction,
               currentModel as GeminiModel
-            )
-            aiSuffix = res
-          }
-          spinner.stop()
-          break
-        }
-        case 'copilot': {
-          const cop = await import('../api/copilot.js')
-          const { generateBranchName, generateCommitMessage } = cop
-          const spinner = new ScrambleProgress()
-          spinner.start([
-            `Retrying with ${getAIProviderShortName(aiProvider)}${getModelValue(currentModel) ? ` (${getModelValue(currentModel)})` : ''}`,
-          ])
-          if (isCommit) {
-            const res = await generateCommitMessage(
-              diff || 'Code changes',
-              correction,
-              currentModel as CopilotModel
-            )
-            aiSuffix = res
-          } else {
-            const res = await generateBranchName(
-              diff || 'Code changes',
-              correction,
-              currentModel as CopilotModel
             )
             aiSuffix = res
           }
@@ -527,6 +493,29 @@ export async function interactiveAIFallback(
           spinner.stop()
           break
         }
+        case 'opencode-zen': {
+          const opencodeApi = await import('../api/opencode.js')
+          const { generateBranchName, generateCommitMessage } = opencodeApi
+          const spinner = new ScrambleProgress()
+          spinner.start([
+            `Retrying with ${getAIProviderShortName(aiProvider)}${getModelValue(currentModel) ? ` (${getModelValue(currentModel)})` : ''}`,
+          ])
+          if (isCommit) {
+            aiSuffix = await generateCommitMessage(
+              diff || 'Code changes',
+              correction,
+              currentModel as string
+            )
+          } else {
+            aiSuffix = await generateBranchName(
+              diff || 'Code changes',
+              correction,
+              currentModel as string
+            )
+          }
+          spinner.stop()
+          break
+        }
         default: {
           break
         }
@@ -547,10 +536,10 @@ export async function interactiveAIFallback(
         const models = await getGeminiModels()
         const gemOptions = models.some((m) => m.value === 'back')
           ? models
-          : [...models, { label: 'Back to try again model selection', value: 'back' }]
+          : [...models, { label: 'Back to recovery options', value: 'back' }]
         const chosen = await select('Choose a different Gemini model:', gemOptions)
         if (chosen === 'back') {
-          continue // Go back to try again model selection
+          continue // Return to recovery options
         }
         // user already selected a model from the menu — apply it immediately
         currentModel = chosen as GeminiModel
@@ -578,49 +567,16 @@ export async function interactiveAIFallback(
         continue
       }
 
-      if (aiProvider === 'copilot') {
-        const cop = await import('../api/copilot.js')
-        const { generateBranchName, generateCommitMessage, getCopilotModels } = cop
-        const models = await getCopilotModels()
-        const copOptions = models.some((m) => m.value === 'back')
-          ? models
-          : [...models, { label: 'Back to try again model selection', value: 'back' }]
-        const chosen = await select('Choose a different GitHub Copilot model:', copOptions)
-        if (chosen === 'back') {
-          continue // Go back to try again model selection
-        }
-        // user already selected a model from the menu — apply it immediately
-        currentModel = chosen as CopilotModel
-        updateModel?.('copilot', chosen as CopilotModel)
-        const spinner = new ScrambleProgress()
-        spinner.start([
-          `${isCommit ? 'Generating commit message' : 'Generating branch name'} with GitHub Copilot (${chosen})`,
-        ])
-
-        if (isCommit) {
-          const res = await generateCommitMessage(diff, correction, chosen as CopilotModel)
-          aiSuffix = res
-        } else {
-          const res = await generateBranchName(diff, correction, chosen as CopilotModel)
-          aiSuffix = res
-        }
-        spinner.stop()
-        if (isTransientFailure(aiSuffix)) {
-          failedModels.add(chosen as string)
-        }
-        continue
-      }
-
       if (aiProvider === 'openrouter') {
         const or = await import('../api/openrouter.js')
         const { generateBranchName, generateCommitMessage, getOpenRouterModels } = or
         const models = await getOpenRouterModels()
         const orOptions = models.some((m) => m.value === 'back')
           ? models
-          : [...models, { label: 'Back to try again model selection', value: 'back' }]
+          : [...models, { label: 'Back to recovery options', value: 'back' }]
         const chosen = await select('Choose a different OpenRouter model:', orOptions)
         if (chosen === 'back') {
-          continue // Go back to try again model selection
+          continue // Return to recovery options
         }
         // user already selected a model from the menu — apply it immediately
         currentModel = chosen as OpenRouterModel
@@ -654,7 +610,7 @@ export async function interactiveAIFallback(
         const models = await getGroqModels()
         const groqOptions = models.some((m) => m.value === 'back')
           ? models
-          : [...models, { label: 'Back to try again model selection', value: 'back' }]
+          : [...models, { label: 'Back to recovery options', value: 'back' }]
         const chosen = await select('Choose a different Groq model:', groqOptions)
         if (chosen === 'back') {
           continue
@@ -683,8 +639,8 @@ export async function interactiveAIFallback(
         const models = await getCodexModels()
         const codexOptions = models.some((m) => m.value === 'back')
           ? models
-          : [...models, { label: 'Back to try again model selection', value: 'back' }]
-        const chosen = await select('Choose a different Codex model:', codexOptions)
+          : [...models, { label: 'Back to recovery options', value: 'back' }]
+        const chosen = await select('Choose a different OpenAI Codex model:', codexOptions)
         if (chosen === 'back') {
           continue
         }
@@ -705,10 +661,39 @@ export async function interactiveAIFallback(
         }
         continue
       }
+
+      if (aiProvider === 'opencode-zen') {
+        const opencodeApi = await import('../api/opencode.js')
+        const { generateBranchName, generateCommitMessage, getOpenCodeModels } = opencodeApi
+        const models = await getOpenCodeModels()
+        const opencodeOptions = models.some((m) => m.value === 'back')
+          ? models
+          : [...models, { label: 'Back to recovery options', value: 'back' }]
+        const chosen = await select('Choose a different OpenCode Zen model:', opencodeOptions)
+        if (chosen === 'back') {
+          continue
+        }
+        currentModel = chosen
+        updateModel?.('opencode-zen', chosen)
+        const spinner = new ScrambleProgress()
+        spinner.start([
+          `${isCommit ? 'Generating commit message' : 'Generating branch name'} with OpenCode Zen (${chosen})`,
+        ])
+        if (isCommit) {
+          aiSuffix = await generateCommitMessage(diff, correction, chosen)
+        } else {
+          aiSuffix = await generateBranchName(diff || 'Code changes', correction, chosen)
+        }
+        spinner.stop()
+        if (isTransientFailure(aiSuffix)) {
+          failedModels.add(chosen)
+        }
+        continue
+      }
     }
 
     if (pick === 'different-provider') {
-      const providers = ['gemini', 'copilot', 'openrouter', 'groq', 'codex'].filter(
+      const providers = ['gemini', 'openrouter', 'groq', 'codex', 'opencode-zen'].filter(
         (p) => p !== aiProvider
       )
       const providerOptions = providers.map((p) => ({
@@ -717,8 +702,11 @@ export async function interactiveAIFallback(
       }))
       const provOptionsWithBack = providerOptions.some((p) => p.value === 'back')
         ? providerOptions
-        : [...providerOptions, { label: 'Back to try again model selection', value: 'back' }]
-      const pickProv = await select('Choose AI provider:', provOptionsWithBack)
+        : [...providerOptions, { label: 'Back to recovery options', value: 'back' }]
+      const pickProv = await select(
+        'Which AI provider should retry the request?',
+        provOptionsWithBack
+      )
       if (pickProv === 'back') {
         continue // return to try-again model selection
       }
@@ -736,10 +724,13 @@ export async function interactiveAIFallback(
           const models = await gem.getGeminiModels()
           const gemOptions = models.some((m) => m.value === 'back')
             ? models
-            : [...models, { label: 'Back to try again model selection', value: 'back' }]
-          const chosenModel = await select('Choose Gemini model:', gemOptions)
+            : [...models, { label: 'Back to recovery options', value: 'back' }]
+          const chosenModel = await select(
+            'Which Gemini model should retry the request?',
+            gemOptions
+          )
           if (chosenModel === 'back') {
-            continue // Go back to try again model selection
+            continue // Return to recovery options
           }
           // set active provider + model for subsequent retries
           aiProvider = 'gemini'
@@ -766,44 +757,6 @@ export async function interactiveAIFallback(
 
           break
         }
-        case 'copilot': {
-          log.info(`Selected AI Provider: GitHub Copilot`)
-          const { ensureAIProvider } = await import('../core/setup.js')
-          const copilotReady = await ensureAIProvider('copilot')
-          if (!copilotReady) {
-            continue
-          }
-          const cop = await import('../api/copilot.js')
-          const { getCopilotModels, generateBranchName, generateCommitMessage } = cop
-          const models = await getCopilotModels()
-          const copOptions = models.some((m) => m.value === 'back')
-            ? models
-            : [...models, { label: 'Back to try again model selection', value: 'back' }]
-          const chosen = await select('Choose GitHub Copilot model:', copOptions)
-          if (chosen === 'back') {
-            continue // Go back to try again model selection
-          }
-
-          // user already selected a model from the menu — apply it immediately
-          aiProvider = 'copilot'
-          currentModel = chosen as CopilotModel
-          updateModel?.('copilot', chosen as CopilotModel)
-          const spinner = new ScrambleProgress()
-          spinner.start([
-            `${isCommit ? 'Generating commit message' : 'Generating branch name'} with GitHub Copilot (${chosen})`,
-          ])
-
-          if (isCommit) {
-            const res = await generateCommitMessage(diff, correction, chosen as CopilotModel)
-            aiSuffix = res
-          } else {
-            const res = await generateBranchName(diff, correction, chosen as CopilotModel)
-            aiSuffix = res
-          }
-          spinner.stop()
-
-          break
-        }
         case 'openrouter': {
           log.info(`Selected AI Provider: OpenRouter`)
           const { ensureAIProvider } = await import('../core/setup.js')
@@ -816,8 +769,8 @@ export async function interactiveAIFallback(
           const models = await getOpenRouterModels()
           const orOptions = models.some((m) => m.value === 'back')
             ? models
-            : [...models, { label: 'Back to try again model selection', value: 'back' }]
-          const chosen = await select('Choose OpenRouter Model:', orOptions)
+            : [...models, { label: 'Back to recovery options', value: 'back' }]
+          const chosen = await select('Which OpenRouter model should retry the request?', orOptions)
           if (chosen === 'back') {
             continue
           }
@@ -849,8 +802,8 @@ export async function interactiveAIFallback(
           const models = await getGroqModels()
           const groqOptions = models.some((m) => m.value === 'back')
             ? models
-            : [...models, { label: 'Back to try again model selection', value: 'back' }]
-          const chosen = await select('Choose Groq model:', groqOptions)
+            : [...models, { label: 'Back to recovery options', value: 'back' }]
+          const chosen = await select('Which Groq model should retry the request?', groqOptions)
           if (chosen === 'back') {
             continue
           }
@@ -871,7 +824,7 @@ export async function interactiveAIFallback(
           break
         }
         case 'codex': {
-          log.info(`Selected AI Provider: Codex`)
+          log.info(`Selected AI Provider: OpenAI Codex`)
           const { ensureAIProvider } = await import('../core/setup.js')
           const codexReady = await ensureAIProvider('codex')
           if (!codexReady) {
@@ -882,8 +835,11 @@ export async function interactiveAIFallback(
           const models = await getCodexModels()
           const codexOptions = models.some((m) => m.value === 'back')
             ? models
-            : [...models, { label: 'Back to try again model selection', value: 'back' }]
-          const chosen = await select('Choose Codex model:', codexOptions)
+            : [...models, { label: 'Back to recovery options', value: 'back' }]
+          const chosen = await select(
+            'Which OpenAI Codex model should retry the request?',
+            codexOptions
+          )
           if (chosen === 'back') {
             continue
           }
@@ -903,6 +859,39 @@ export async function interactiveAIFallback(
 
           break
         }
+        case 'opencode-zen': {
+          log.info(`Selected AI Provider: OpenCode Zen`)
+          const { ensureAIProvider } = await import('../core/setup.js')
+          const opencodeReady = await ensureAIProvider('opencode-zen')
+          if (!opencodeReady) {
+            continue
+          }
+          const opencodeApi = await import('../api/opencode.js')
+          const { generateBranchName, generateCommitMessage, getOpenCodeModels } = opencodeApi
+          const models = await getOpenCodeModels()
+          const opencodeOptions = models.some((m) => m.value === 'back')
+            ? models
+            : [...models, { label: 'Back to recovery options', value: 'back' }]
+          const chosen = await select('Choose OpenCode Zen model:', opencodeOptions)
+          if (chosen === 'back') {
+            continue
+          }
+          aiProvider = 'opencode-zen'
+          currentModel = chosen
+          updateModel?.('opencode-zen', chosen)
+          const spinner = new ScrambleProgress()
+          spinner.start([
+            `${isCommit ? 'Generating commit message' : 'Generating branch name'} with OpenCode Zen (${chosen})`,
+          ])
+          if (isCommit) {
+            aiSuffix = await generateCommitMessage(diff, correction, chosen)
+          } else {
+            aiSuffix = await generateBranchName(diff, correction, chosen)
+          }
+          spinner.stop()
+
+          break
+        }
         // No default
       }
 
@@ -912,24 +901,26 @@ export async function interactiveAIFallback(
 }
 
 export async function getBranchNameFromDiffUsingProvider(
-  provider: 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'codex',
+  provider: 'gemini' | 'openrouter' | 'groq' | 'codex' | 'opencode-zen',
   diff: string,
   correction?: string,
-  copilotModel?: CopilotModel,
+  _model?: OpenRouterModel | GeminiModel | string,
   openrouterModel?: OpenRouterModel,
   geminiModel?: GeminiModel,
   groqModel?: GroqModel,
-  codexModel?: string
+  codexModel?: string,
+  opencodeModel?: string
 ): Promise<string | null> {
   return generateBranchNameWithProvider(
     provider,
     diff,
     correction,
-    copilotModel,
+    _model,
     openrouterModel,
     geminiModel,
     groqModel,
-    codexModel
+    codexModel,
+    opencodeModel
   )
 }
 
@@ -938,76 +929,10 @@ export async function getBranchNameFromDiffUsingProvider(
  * Returns the chosen model value string or 'back' if the user went back, or undefined if setup failed.
  */
 export async function chooseModelForProvider(
-  provider: 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'codex',
+  provider: 'gemini' | 'openrouter' | 'groq' | 'codex' | 'opencode-zen',
   prompt?: string,
   backLabel?: string
 ): Promise<string | 'back' | undefined> {
-  if (provider === 'copilot') {
-    log.info(`Selected AI Provider: GitHub Copilot`)
-
-    const { ensureAIProvider } = await import('../core/setup.js')
-    const ready = await ensureAIProvider(provider)
-    if (!ready) {
-      return undefined
-    }
-
-    const cop = await import('../api/copilot.js')
-    const models = (await cop.getCopilotModels()) as Array<{ label: string; value: string }>
-
-    // Check if no models are available (SDK not installed or not functioning)
-    if (models.length === 0) {
-      log.warn('GitHub Copilot API not accessible.')
-      console.log('')
-      log.info('A GitHub account with Copilot access (free tier or subscription) is required.')
-      console.log('')
-
-      const { confirm } = await import('../cli/input.js')
-      const shouldInstall = confirm('Setup GitHub Copilot now?')
-
-      if (shouldInstall) {
-        console.log('')
-        // Use the comprehensive setup helper instead of manual exec
-        const { setupGitHubCopilotInteractive } = await import('../core/copilot-setup.js')
-        const setupSuccess = await setupGitHubCopilotInteractive()
-
-        if (setupSuccess) {
-          console.log('')
-          log.info('Verifying Copilot models...')
-          // Re-check if models are now available
-          const modelsAfterInstall = (await cop.getCopilotModels()) as Array<{
-            label: string
-            value: string
-          }>
-          if (modelsAfterInstall.length > 0) {
-            const options = modelsAfterInstall.some((m) => m.value === 'back')
-              ? modelsAfterInstall
-              : [...modelsAfterInstall, { label: backLabel ?? 'Back', value: 'back' }]
-            const { select } = await import('../cli/menu.js')
-            const chosen = await select(prompt ?? 'Choose GitHub Copilot model:', options)
-            return chosen as string | 'back'
-          } else {
-            log.warn('Installation completed but models still not available.')
-            log.info('You may need to restart your terminal or check your installation.')
-            return 'back'
-          }
-        } else {
-          log.info('Setup was not completed. Returning to provider selection.')
-          return 'back'
-        }
-      } else {
-        log.info('Setup skipped. Returning to provider selection.')
-        return 'back'
-      }
-    }
-
-    const options = models.some((m) => m.value === 'back')
-      ? models
-      : [...models, { label: backLabel ?? 'Back', value: 'back' }]
-    const { select } = await import('../cli/menu.js')
-    const chosen = await select(prompt ?? 'Choose GitHub Copilot model:', options)
-    return chosen as string | 'back'
-  }
-
   if (provider === 'openrouter') {
     log.info(`Selected AI Provider: OpenRouter`)
 
@@ -1058,7 +983,7 @@ export async function chooseModelForProvider(
   }
 
   if (provider === 'codex') {
-    log.info(`Selected AI Provider: Codex`)
+    log.info(`Selected AI Provider: OpenAI Codex`)
 
     const { ensureAIProvider } = await import('../core/setup.js')
     const ready = await ensureAIProvider('codex')
@@ -1068,7 +993,7 @@ export async function chooseModelForProvider(
     const models = await codexApi.getCodexModels()
 
     if (models.length === 0) {
-      log.warn('No Codex models available.')
+      log.warn('No OpenAI Codex models available.')
       return undefined
     }
 
@@ -1076,7 +1001,29 @@ export async function chooseModelForProvider(
       ? models
       : [...models, { label: backLabel ?? 'Back', value: 'back' }]
     const { select } = await import('../cli/menu.js')
-    const chosen = await select(prompt ?? 'Choose Codex model:', options)
+    const chosen = await select(prompt ?? 'Choose OpenAI Codex model:', options)
+    return chosen as string | 'back'
+  }
+
+  if (provider === 'opencode-zen') {
+    log.info(`Selected AI Provider: OpenCode Zen`)
+
+    const { ensureAIProvider } = await import('../core/setup.js')
+    const ready = await ensureAIProvider('opencode-zen')
+    if (!ready) return undefined
+
+    const opencodeApi = await import('../api/opencode.js')
+    const models = await opencodeApi.getOpenCodeModels()
+    if (models.length === 0) {
+      log.warn('No OpenCode Zen models available. Configure OpenCode Zen first.')
+      return undefined
+    }
+
+    const options = models.some((m) => m.value === 'back')
+      ? models
+      : [...models, { label: backLabel ?? 'Back', value: 'back' }]
+    const { select } = await import('../cli/menu.js')
+    const chosen = await select(prompt ?? 'Choose OpenCode Zen model:', options)
     return chosen as string | 'back'
   }
 

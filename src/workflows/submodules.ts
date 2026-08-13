@@ -182,18 +182,18 @@ const handleUpdate = async (submodules: SubmoduleInfo[]): Promise<void> => {
     return
   }
 
-  const mode = await select('Update mode:', [
+  const mode = await select('Choose how to update submodules:', [
     { label: 'Update to recorded commit (safe)', value: 'checkout' },
     { label: 'Update to latest remote (--remote)', value: 'remote' },
-    { label: 'Cancel', value: 'cancel' },
+    { label: 'Cancel submodule update', value: 'cancel' },
   ])
 
   if (mode === 'cancel') return
 
-  const scope = await select('Scope:', [
+  const scope = await select('Choose which submodules to update:', [
     { label: `All submodules (${initialized.length})`, value: 'all' },
     { label: 'Select specific submodules', value: 'pick' },
-    { label: 'Cancel', value: 'cancel' },
+    { label: 'Cancel submodule update', value: 'cancel' },
   ])
 
   if (scope === 'cancel') return
@@ -277,7 +277,7 @@ const handleSync = async (submodules: SubmoduleInfo[]): Promise<void> => {
   const scope = await select('Sync scope:', [
     { label: `All submodules (${submodules.length})`, value: 'all' },
     { label: 'Select specific submodules', value: 'pick' },
-    { label: 'Cancel', value: 'cancel' },
+    { label: 'Cancel submodule sync', value: 'cancel' },
   ])
 
   if (scope === 'cancel') return

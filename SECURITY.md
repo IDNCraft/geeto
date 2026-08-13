@@ -60,8 +60,8 @@ We'll credit you (with your permission) in our security advisory.
 
 Security fixes are released as patch versions with high priority. Announcements are made through:
 
-- [GitHub Security Advisories](https://github.com/rust142/geeto/security/advisories)
-- [Release notes](https://github.com/rust142/geeto/releases)
+- [GitHub Security Advisories](https://github.com/IDNCraft/geeto/security/advisories)
+- [Release notes](https://github.com/IDNCraft/geeto/releases)
 - [CHANGELOG.md](CHANGELOG.md)
 
 ## Contact

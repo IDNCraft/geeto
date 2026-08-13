@@ -4,7 +4,7 @@ set -e
 
 # Require bash
 if [ -z "$BASH_VERSION" ]; then
-  echo "This updater requires bash. Run with: curl -fsSL https://raw.githubusercontent.com/rust142/geeto/main/tools/update.sh | bash"
+  echo "This updater requires bash. Run with: curl -fsSL https://raw.githubusercontent.com/IDNCraft/geeto/main/tools/update.sh | bash"
   exit 1
 fi
 
@@ -101,7 +101,7 @@ main() {
     step_fail 1 "Checking current installation — Geeto not found"
     echo ""
     echo -e "  ${YELLOW}Geeto is not installed yet. Use the installer instead:${NC}"
-    echo -e "  ${BLUE}curl -fsSL https://raw.githubusercontent.com/rust142/geeto/main/tools/install.sh | bash${NC}"
+    echo -e "  ${BLUE}curl -fsSL https://raw.githubusercontent.com/IDNCraft/geeto/main/tools/install.sh | bash${NC}"
     echo ""
     exit 1
   fi
@@ -146,7 +146,7 @@ main() {
   # ── Step 2: Fetch latest source ─────────────────────────────────
   CLEANUP_TMP="$(mktemp -d)"
 
-  git clone --depth 1 https://github.com/rust142/geeto.git "$CLEANUP_TMP" >>"$LOGFILE" 2>&1 &
+  git clone --depth 1 https://github.com/IDNCraft/geeto.git "$CLEANUP_TMP" >>"$LOGFILE" 2>&1 &
   local clone_pid=$!
   step_spinner $clone_pid 2 "Fetching latest source" || {
     echo -e "  ${RED}Failed to clone. Check network or see ${LOGFILE}${NC}"

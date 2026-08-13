@@ -2,7 +2,6 @@
  * AI-powered Pull Request / Merge Request review workflow
  */
 
-import type { CopilotModel } from '../api/copilot.js'
 import type { GeminiModel } from '../api/gemini.js'
 import type { OpenRouterModel } from '../api/openrouter.js'
 
@@ -30,7 +29,7 @@ import { loadState, saveState } from '../utils/state.js'
  */
 const callAIForReview = async (
   diff: string,
-  provider: 'copilot' | 'gemini' | 'openrouter' | 'groq' | 'codex',
+  provider: 'gemini' | 'openrouter' | 'groq' | 'codex' | 'opencode-zen',
   model: string | undefined,
   author: string,
   correction?: string
@@ -53,9 +52,11 @@ const callAIForReview = async (
     const result = await generateTextWithProvider(
       provider,
       prompt,
-      model as CopilotModel,
+      undefined,
       model as OpenRouterModel,
       (model as GeminiModel) ?? 'gemini-2.5-flash',
+      model,
+      model,
       model
     )
     spinner.stop()
@@ -148,15 +149,22 @@ export const handleReviewPR = async (): Promise<void> => {
 
     if (failed) {
       log.warn('AI analysis failed or hit context limits.')
-      const failureAction = await select('How would you like to continue?', [
-        { label: 'Change model and retry', value: 'change-model' },
-        { label: 'Change AI provider and retry', value: 'change-provider' },
-        { label: 'Cancel', value: 'cancel' },
-      ])
+      const failureAction = await select(
+        'Pull request review failed. Choose a different model/provider to retry, or cancel:',
+        [
+          { label: 'Change model and retry', value: 'change-model' },
+          { label: 'Change AI provider and retry', value: 'change-provider' },
+          { label: 'Cancel pull request review', value: 'cancel' },
+        ]
+      )
 
       if (failureAction === 'change-model') {
         const { chooseModelForProvider } = await import('../utils/git-ai.js')
-        const chosen = await chooseModelForProvider(aiProvider, 'Choose model:', 'Back')
+        const chosen = await chooseModelForProvider(
+          aiProvider,
+          'Choose model:',
+          'Keep current model'
+        )
         if (chosen && chosen !== 'back') {
           currentModel = chosen
           updateModelInState(state, aiProvider, chosen)
@@ -168,21 +176,21 @@ export const handleReviewPR = async (): Promise<void> => {
       if (failureAction === 'change-provider') {
         const prov = await select('Choose AI provider:', [
           { label: 'Gemini', value: 'gemini' },
-          { label: 'GitHub Copilot', value: 'copilot' },
           { label: 'OpenRouter', value: 'openrouter' },
           { label: 'Groq', value: 'groq' },
-          { label: 'Codex', value: 'codex' },
-          { label: 'Back', value: 'back' },
+          { label: 'OpenAI Codex', value: 'codex' },
+          { label: 'OpenCode Zen', value: 'opencode-zen' },
+          { label: 'Keep current provider', value: 'back' },
         ])
         if (prov !== 'back') {
           const { chooseModelForProvider } = await import('../utils/git-ai.js')
           const chosen = await chooseModelForProvider(
-            prov as 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'codex',
+            prov as 'gemini' | 'openrouter' | 'groq' | 'codex' | 'opencode-zen',
             'Choose model:',
-            'Back'
+            'Keep current model'
           )
           if (chosen && chosen !== 'back') {
-            aiProvider = prov as 'copilot' | 'gemini' | 'openrouter' | 'groq' | 'codex'
+            aiProvider = prov as 'gemini' | 'openrouter' | 'groq' | 'codex' | 'opencode-zen'
             currentModel = chosen
             if (state) {
               state.aiProvider = aiProvider
@@ -211,13 +219,13 @@ export const handleReviewPR = async (): Promise<void> => {
     console.log(`${colors.cyan}└──────────────────────────────────────────────┘${colors.reset}`)
     console.log('')
 
-    const action = await select(`Accept this ${prLabel} review?`, [
-      { label: 'Yes, post it', value: 'accept' },
-      { label: 'Regenerate', value: 'regenerate' },
-      { label: 'Correct AI (give feedback)', value: 'correct' },
-      { label: 'Change model', value: 'change-model' },
-      { label: 'Change AI provider', value: 'change-provider' },
-      { label: 'Discard & cancel', value: 'discard' },
+    const action = await select(`Choose what to do with this ${prLabel} review:`, [
+      { label: `Post this ${prLabel} review`, value: 'accept' },
+      { label: 'Generate a new review', value: 'regenerate' },
+      { label: 'Give AI feedback', value: 'correct' },
+      { label: 'Switch model', value: 'change-model' },
+      { label: 'Switch AI provider', value: 'change-provider' },
+      { label: 'Discard the review', value: 'discard' },
     ])
 
     switch (action) {
@@ -237,7 +245,11 @@ export const handleReviewPR = async (): Promise<void> => {
       }
       case 'change-model': {
         const { chooseModelForProvider } = await import('../utils/git-ai.js')
-        const chosen = await chooseModelForProvider(aiProvider, 'Choose model:', 'Back')
+        const chosen = await chooseModelForProvider(
+          aiProvider,
+          'Choose model:',
+          'Keep current model'
+        )
         if (chosen && chosen !== 'back') {
           currentModel = chosen
           updateModelInState(state, aiProvider, chosen)
@@ -248,21 +260,21 @@ export const handleReviewPR = async (): Promise<void> => {
       case 'change-provider': {
         const prov = await select('Choose AI provider:', [
           { label: 'Gemini', value: 'gemini' },
-          { label: 'GitHub Copilot', value: 'copilot' },
           { label: 'OpenRouter', value: 'openrouter' },
           { label: 'Groq', value: 'groq' },
-          { label: 'Codex', value: 'codex' },
-          { label: 'Back', value: 'back' },
+          { label: 'OpenAI Codex', value: 'codex' },
+          { label: 'OpenCode Zen', value: 'opencode-zen' },
+          { label: 'Keep current provider', value: 'back' },
         ])
         if (prov !== 'back') {
           const { chooseModelForProvider } = await import('../utils/git-ai.js')
           const chosen = await chooseModelForProvider(
-            prov as 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'codex',
+            prov as 'gemini' | 'openrouter' | 'groq' | 'codex' | 'opencode-zen',
             'Choose model:',
-            'Back'
+            'Keep current model'
           )
           if (chosen && chosen !== 'back') {
-            aiProvider = prov as 'copilot' | 'gemini' | 'openrouter' | 'groq' | 'codex'
+            aiProvider = prov as 'gemini' | 'openrouter' | 'groq' | 'codex' | 'opencode-zen'
             currentModel = chosen
             if (state) {
               state.aiProvider = aiProvider

@@ -152,7 +152,7 @@ export async function handleMerge(
     if (!developmentPresent) {
       options.unshift({ label: "Create 'development' branch", value: 'create_development' })
     }
-    options.push({ label: 'Cancel', value: 'cancel' })
+    options.push({ label: 'Cancel merge', value: 'cancel' })
 
     console.log('')
     const chosen = await select('Choose target branch for merge:', options)
@@ -317,7 +317,9 @@ export async function handleCleanup(featureBranch: string, state: GeetoState): P
       if (protectedBranches.has(featureBranch.toLowerCase())) {
         log.info(`Skipping deletion of protected branch '${featureBranch}'`)
       } else {
-        const deleteAnswer = confirm(`Delete branch '${featureBranch}'?`)
+        const deleteAnswer = confirm(
+          `Delete local and remote branch '${featureBranch}' after merge? This removes the branch references.`
+        )
         if (deleteAnswer) {
           try {
             console.log('')
@@ -357,15 +359,18 @@ export async function handleCleanup(featureBranch: string, state: GeetoState): P
                 log.warn(`Branch '${featureBranch}' is not fully merged.`)
               }
 
-              const forceDeleteChoice = await select('What would you like to do?', [
-                {
-                  label: isMergedToHead
-                    ? 'Delete (safe - already merged)'
-                    : 'Force delete anyway (git branch -D)',
-                  value: 'force',
-                },
-                { label: 'Keep the branch', value: 'keep' },
-              ])
+              const forceDeleteChoice = await select(
+                'Branch is not fully merged. Choose an action:',
+                [
+                  {
+                    label: isMergedToHead
+                      ? 'Delete (safe - already merged)'
+                      : 'Force delete anyway (git branch -D)',
+                    value: 'force',
+                  },
+                  { label: 'Keep the branch', value: 'keep' },
+                ]
+              )
 
               if (forceDeleteChoice === 'force') {
                 try {

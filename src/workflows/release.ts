@@ -5,7 +5,6 @@
  */
 
 import { readFileSync, writeFileSync } from 'node:fs'
-import type { CopilotModel } from '../api/copilot.js'
 import type { GeminiModel } from '../api/gemini.js'
 import type { OpenRouterModel } from '../api/openrouter.js'
 
@@ -59,12 +58,12 @@ export const handleRelease = async (): Promise<void> => {
   const cli = platform ? getPlatformCLI(platform) : 'gh'
   const platformName = platform === 'gitlab' ? 'GitLab' : 'GitHub'
 
-  const mode = await select('What do you want to do?', [
+  const mode = await select('Release manager: choose an operation:', [
     { label: 'Create a new release', value: 'create' },
-    { label: `Sync ${platformName} Releases for existing tags`, value: 'sync' },
-    { label: 'Merge Releases (consolidate release notes)', value: 'merge' },
+    { label: `Sync ${platformName} releases with existing tags`, value: 'sync' },
+    { label: 'Merge existing releases and notes', value: 'merge' },
     { label: 'Recover missing tags from release commits', value: 'recover' },
-    { label: `Delete ${platformName} Releases`, value: 'delete' },
+    { label: `Delete ${platformName} releases`, value: 'delete' },
   ])
 
   if (mode === 'sync') {
@@ -117,7 +116,9 @@ export const handleRelease = async (): Promise<void> => {
   if (commits.length === 0) {
     console.log('')
     log.warn('No new commits since last tag.')
-    const force = confirm('Create a release anyway?')
+    const force = confirm(
+      'No new commits since the last tag. Create a release anyway? It will contain no new changes.'
+    )
     if (!force) return
   } else {
     console.log('')
@@ -185,9 +186,9 @@ export const handleRelease = async (): Promise<void> => {
     )
   }
 
-  bumpOptions.push({ label: 'Cancel', value: 'cancel' })
+  bumpOptions.push({ label: 'Cancel release', value: 'cancel' })
 
-  const bumpType = await select('Version bump:', bumpOptions)
+  const bumpType = await select('Choose the next release version:', bumpOptions)
 
   if (bumpType === 'cancel') return
 
@@ -293,40 +294,40 @@ export const handleRelease = async (): Promise<void> => {
 
     // Read saved AI config from state
     const savedState = loadState()
-    let aiProvider: 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'codex' = 'copilot'
-    let copilotModel: CopilotModel | undefined
+    let aiProvider: 'gemini' | 'openrouter' | 'groq' | 'codex' | 'opencode-zen' = 'gemini'
     let openrouterModel: OpenRouterModel | undefined
     let geminiModel: GeminiModel | undefined
     let groqModel: string | undefined
     let codexModel: string | undefined
+    let opencodeModel: string | undefined
 
     // Use saved provider/model if available, otherwise ask user
     const configuredProvider = getConfiguredAIProvider(savedState)
     if (
       configuredProvider &&
-      (savedState?.copilotModel ||
-        savedState?.openrouterModel ||
+      (savedState?.openrouterModel ||
         savedState?.geminiModel ||
         savedState?.groqModel ||
-        savedState?.codexModel)
+        savedState?.codexModel ||
+        savedState?.opencodeModel)
     ) {
       aiProvider = configuredProvider
-      copilotModel = savedState.copilotModel
       openrouterModel = savedState.openrouterModel
       geminiModel = savedState.geminiModel
       groqModel = savedState.groqModel
       codexModel = savedState.codexModel
+      opencodeModel = savedState.opencodeModel
     } else {
       // No saved config — ask user to pick provider + model
       let providerChosen = false
       while (!providerChosen) {
         aiProvider = (await select('Choose AI Provider:', [
-          { label: 'GitHub Copilot', value: 'copilot' },
           { label: 'Gemini', value: 'gemini' },
           { label: 'OpenRouter', value: 'openrouter' },
           { label: 'Groq', value: 'groq' },
-          { label: 'Codex', value: 'codex' },
-        ])) as 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'codex'
+          { label: 'OpenAI Codex', value: 'codex' },
+          { label: 'OpenCode Zen', value: 'opencode-zen' },
+        ])) as 'gemini' | 'openrouter' | 'groq' | 'codex' | 'opencode-zen'
 
         const chosen = await chooseModelForProvider(
           aiProvider,
@@ -338,10 +339,6 @@ export const handleRelease = async (): Promise<void> => {
         switch (aiProvider) {
           case 'gemini': {
             geminiModel = chosen as GeminiModel
-            break
-          }
-          case 'copilot': {
-            copilotModel = chosen as CopilotModel
             break
           }
           case 'openrouter': {
@@ -356,6 +353,10 @@ export const handleRelease = async (): Promise<void> => {
             codexModel = chosen
             break
           }
+          case 'opencode-zen': {
+            opencodeModel = chosen
+            break
+          }
         }
         providerChosen = true
       }
@@ -368,14 +369,14 @@ export const handleRelease = async (): Promise<void> => {
     while (!accepted) {
       const spinner = new ScrambleProgress()
       const currentModel =
-        aiProvider === 'copilot'
-          ? copilotModel
-          : aiProvider === 'openrouter'
-            ? openrouterModel
-            : aiProvider === 'groq'
-              ? groqModel
-              : aiProvider === 'codex'
-                ? codexModel
+        aiProvider === 'openrouter'
+          ? openrouterModel
+          : aiProvider === 'groq'
+            ? groqModel
+            : aiProvider === 'codex'
+              ? codexModel
+              : aiProvider === 'opencode-zen'
+                ? opencodeModel
                 : geminiModel
       const modelDisplay = getModelValue(currentModel)
       spinner.start([
@@ -387,11 +388,12 @@ export const handleRelease = async (): Promise<void> => {
         commitList,
         language,
         correction,
-        copilotModel,
+        undefined,
         openrouterModel,
         geminiModel,
         groqModel,
-        codexModel
+        codexModel,
+        opencodeModel
       )
 
       const failed = !result || isContextLimitFailure(result) || isTransientAIFailure(result)
@@ -401,12 +403,15 @@ export const handleRelease = async (): Promise<void> => {
           log.warn(result)
         }
 
-        const failureAction = await select('How would you like to continue?', [
-          { label: 'Change model and retry', value: 'change-model' },
-          { label: 'Change AI provider and retry', value: 'change-provider' },
-          { label: 'Edit release notes manually', value: 'edit' },
-          { label: 'Use template instead', value: 'template' },
-        ])
+        const failureAction = await select(
+          'Release notes generation failed. Choose a different model/provider to retry, edit the notes, or use a template:',
+          [
+            { label: 'Change model and retry', value: 'change-model' },
+            { label: 'Change AI provider and retry', value: 'change-provider' },
+            { label: 'Edit release notes manually', value: 'edit' },
+            { label: 'Use template instead', value: 'template' },
+          ]
+        )
 
         if (failureAction === 'change-model') {
           const newModel = await chooseModelForProvider(aiProvider, undefined, 'Back')
@@ -414,10 +419,6 @@ export const handleRelease = async (): Promise<void> => {
             switch (aiProvider) {
               case 'gemini': {
                 geminiModel = newModel as GeminiModel
-                break
-              }
-              case 'copilot': {
-                copilotModel = newModel as CopilotModel
                 break
               }
               case 'openrouter': {
@@ -432,6 +433,10 @@ export const handleRelease = async (): Promise<void> => {
                 codexModel = newModel
                 break
               }
+              case 'opencode-zen': {
+                opencodeModel = newModel
+                break
+              }
             }
           }
           correction = undefined
@@ -440,14 +445,13 @@ export const handleRelease = async (): Promise<void> => {
 
         if (failureAction === 'change-provider') {
           const prov = (await select('Choose AI provider:', [
-            { label: 'GitHub Copilot', value: 'copilot' },
             { label: 'Gemini', value: 'gemini' },
             { label: 'OpenRouter', value: 'openrouter' },
             { label: 'Groq', value: 'groq' },
-            { label: 'Codex', value: 'codex' },
-          ])) as 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'codex'
+            { label: 'OpenAI Codex', value: 'codex' },
+            { label: 'OpenCode Zen', value: 'opencode-zen' },
+          ])) as 'gemini' | 'openrouter' | 'groq' | 'codex' | 'opencode-zen'
           aiProvider = prov
-          copilotModel = undefined
           openrouterModel = undefined
           geminiModel = undefined
           groqModel = undefined
@@ -459,10 +463,6 @@ export const handleRelease = async (): Promise<void> => {
                 geminiModel = newModel as GeminiModel
                 break
               }
-              case 'copilot': {
-                copilotModel = newModel as CopilotModel
-                break
-              }
               case 'openrouter': {
                 openrouterModel = newModel as OpenRouterModel
                 break
@@ -473,6 +473,10 @@ export const handleRelease = async (): Promise<void> => {
               }
               case 'codex': {
                 codexModel = newModel
+                break
+              }
+              case 'opencode-zen': {
+                opencodeModel = newModel
                 break
               }
             }
@@ -513,14 +517,14 @@ export const handleRelease = async (): Promise<void> => {
       console.log(`${colors.cyan}└${'─'.repeat(BOX_W)}┘${colors.reset}`)
       console.log('')
 
-      const action = await select('Accept these release notes?', [
-        { label: 'Yes, use it', value: 'accept' },
-        { label: 'Regenerate', value: 'regenerate' },
-        { label: 'Edit inline', value: 'edit' },
-        { label: 'Correct AI (give feedback)', value: 'correct' },
-        { label: 'Change model', value: 'change-model' },
-        { label: 'Change AI provider', value: 'change-provider' },
-        { label: 'Use template instead', value: 'template' },
+      const action = await select('Choose what to do with these release notes:', [
+        { label: 'Use these release notes', value: 'accept' },
+        { label: 'Generate new release notes', value: 'regenerate' },
+        { label: 'Edit the release notes', value: 'edit' },
+        { label: 'Give AI feedback', value: 'correct' },
+        { label: 'Switch model', value: 'change-model' },
+        { label: 'Switch AI provider', value: 'change-provider' },
+        { label: 'Use the template instead', value: 'template' },
       ])
 
       switch (action) {
@@ -555,10 +559,6 @@ export const handleRelease = async (): Promise<void> => {
                 geminiModel = newModel as GeminiModel
                 break
               }
-              case 'copilot': {
-                copilotModel = newModel as CopilotModel
-                break
-              }
               case 'openrouter': {
                 openrouterModel = newModel as OpenRouterModel
                 break
@@ -578,14 +578,13 @@ export const handleRelease = async (): Promise<void> => {
         }
         case 'change-provider': {
           const prov = (await select('Choose AI provider:', [
-            { label: 'GitHub Copilot', value: 'copilot' },
             { label: 'Gemini', value: 'gemini' },
             { label: 'OpenRouter', value: 'openrouter' },
             { label: 'Groq', value: 'groq' },
-            { label: 'Codex', value: 'codex' },
-          ])) as 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'codex'
+            { label: 'OpenAI Codex', value: 'codex' },
+            { label: 'OpenCode Zen', value: 'opencode-zen' },
+          ])) as 'gemini' | 'openrouter' | 'groq' | 'codex' | 'opencode-zen'
           aiProvider = prov
-          copilotModel = undefined
           openrouterModel = undefined
           geminiModel = undefined
           groqModel = undefined
@@ -595,10 +594,6 @@ export const handleRelease = async (): Promise<void> => {
             switch (aiProvider) {
               case 'gemini': {
                 geminiModel = newModel as GeminiModel
-                break
-              }
-              case 'copilot': {
-                copilotModel = newModel as CopilotModel
                 break
               }
               case 'openrouter': {
@@ -611,6 +606,10 @@ export const handleRelease = async (): Promise<void> => {
               }
               case 'codex': {
                 codexModel = newModel
+                break
+              }
+              case 'opencode-zen': {
+                opencodeModel = newModel
                 break
               }
             }
@@ -674,7 +673,7 @@ export const handleRelease = async (): Promise<void> => {
 
     const header = '# Releases\n\n'
     const footer =
-      '\n*This document was automatically generated by [Geeto CLI](https://github.com/rust142/geeto)*\n'
+      '\n*This document was automatically generated by [Geeto CLI](https://github.com/IDNCraft/geeto)*\n'
 
     let releaseMd: string
     if (existing.startsWith('# Releases')) {

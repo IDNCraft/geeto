@@ -10,16 +10,6 @@ export function gitExec(command: string, silent = false): string {
   return exec(fullCommand, silent)
 }
 
-/** Check if we're in a git repository */
-export function isGitRepository(): boolean {
-  try {
-    gitExec('rev-parse --is-inside-work-tree', true)
-    return true
-  } catch {
-    return false
-  }
-}
-
 /** Get git config value */
 export function getGitConfig(key: string): string {
   try {
@@ -27,11 +17,6 @@ export function getGitConfig(key: string): string {
   } catch {
     return ''
   }
-}
-
-/** Set git config value */
-export function setGitConfig(key: string, value: string): void {
-  gitExec(`config ${key} "${value}"`)
 }
 
 /** Get git user info */

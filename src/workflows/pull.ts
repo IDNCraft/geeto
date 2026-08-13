@@ -146,7 +146,7 @@ export const handlePull = async (): Promise<void> => {
   let remote = tracking?.remote ?? 'origin'
   if (remotes.length > 1) {
     remote = await select(
-      'Pull from which remote?',
+      'Which remote should be pulled into the current branch?',
       remotes.map((r) => ({
         label: `${r}${r === tracking?.remote ? `  ${GR}(tracking)${R}` : ''}`,
         value: r,
@@ -155,7 +155,7 @@ export const handlePull = async (): Promise<void> => {
   }
 
   // Choose strategy
-  const strategy = await select('Pull strategy:', [
+  const strategy = await select('Choose how to integrate remote changes:', [
     {
       label: `Merge  ${GR}(default — preserves history)${R}`,
       value: 'merge',

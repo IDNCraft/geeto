@@ -11,8 +11,8 @@ type InstallMethod = 'homebrew' | 'npm' | 'bun' | 'binary' | 'unknown'
 
 const CACHE_FILE = path.join(process.cwd(), '.geeto', 'update-check.json')
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000
-const INSTALL_SCRIPT_URL = 'https://raw.githubusercontent.com/rust142/geeto/main/tools/install.sh'
-const GITHUB_REPO = 'rust142/geeto'
+const INSTALL_SCRIPT_URL = 'https://raw.githubusercontent.com/IDNCraft/geeto/main/tools/install.sh'
+const GITHUB_REPO = 'IDNCraft/geeto'
 
 interface UpdateInfo {
   latestVersion: string

@@ -2,7 +2,6 @@
  * AI Provider selection workflow - handles AI provider and model selection
  */
 
-import type { CopilotModel } from '../api/copilot.js'
 import type { GeminiModel } from '../api/gemini.js'
 import type { GroqModel } from '../api/groq.js'
 import type { OpenRouterModel } from '../api/openrouter.js'
@@ -13,30 +12,30 @@ import { select } from '../cli/menu.js'
 import { chooseModelForProvider } from '../utils/git-ai.js'
 
 export const handleAIProviderSelection = async (): Promise<{
-  aiProvider: 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'codex' | 'manual'
-  copilotModel?: CopilotModel
+  aiProvider: 'gemini' | 'openrouter' | 'groq' | 'codex' | 'opencode-zen' | 'manual'
   openrouterModel?: OpenRouterModel
   geminiModel?: GeminiModel
   groqModel?: GroqModel
   codexModel?: string
+  opencodeModel?: string
 }> => {
-  let aiProvider: 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'codex' | 'manual'
-  let copilotModel: CopilotModel | undefined
+  let aiProvider: 'gemini' | 'openrouter' | 'groq' | 'codex' | 'opencode-zen' | 'manual'
   let openrouterModel: OpenRouterModel | undefined
   let geminiModel: GeminiModel | undefined
   let groqModel: GroqModel | undefined
   let codexModel: string | undefined
+  let opencodeModel: string | undefined
 
   // AI provider selection loop
   while (true) {
-    aiProvider = (await select('Choose AI Provider for branch naming and commit messages:', [
+    aiProvider = (await select('Choose a provider for branch names and commit messages:', [
       { label: 'Gemini', value: 'gemini' },
-      { label: 'GitHub Copilot', value: 'copilot' },
       { label: 'OpenRouter', value: 'openrouter' },
       { label: 'Groq', value: 'groq' },
-      { label: 'Codex', value: 'codex' },
-      { label: 'Manual', value: 'manual' },
-    ])) as 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'codex' | 'manual'
+      { label: 'OpenAI Codex', value: 'codex' },
+      { label: 'OpenCode Zen', value: 'opencode-zen' },
+      { label: 'Write names and messages yourself', value: 'manual' },
+    ])) as 'gemini' | 'openrouter' | 'groq' | 'codex' | 'opencode-zen' | 'manual'
 
     // Setup the selected AI provider using centralized helper where possible
     if (aiProvider === 'manual') {
@@ -45,7 +44,7 @@ export const handleAIProviderSelection = async (): Promise<{
     }
 
     const chosen = await chooseModelForProvider(
-      aiProvider as 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'codex',
+      aiProvider as 'gemini' | 'openrouter' | 'groq' | 'codex' | 'opencode-zen',
       undefined,
       'Back to AI provider menu'
     )
@@ -64,12 +63,6 @@ export const handleAIProviderSelection = async (): Promise<{
 
         break
       }
-      case 'copilot': {
-        copilotModel = chosen as CopilotModel
-        console.log('')
-
-        break
-      }
       case 'openrouter': {
         openrouterModel = chosen as OpenRouterModel
 
@@ -84,6 +77,10 @@ export const handleAIProviderSelection = async (): Promise<{
         codexModel = chosen
         break
       }
+      case 'opencode-zen': {
+        opencodeModel = chosen
+        break
+      }
       // No default
     }
 
@@ -91,5 +88,5 @@ export const handleAIProviderSelection = async (): Promise<{
     break
   }
 
-  return { aiProvider, copilotModel, openrouterModel, geminiModel, groqModel, codexModel }
+  return { aiProvider, openrouterModel, geminiModel, groqModel, codexModel, opencodeModel }
 }

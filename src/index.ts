@@ -254,17 +254,24 @@ const COMMAND_REGISTRY: CommandEntry[] = [
     errorLabel: 'Settings',
   },
   {
-    flag: '--setup-copilot',
-    alias: undefined,
-    module: './workflows/settings.js',
-    handler: 'handleCopilotSetting',
-    errorLabel: 'Settings',
-  },
-  {
     flag: '--setup-groq',
     alias: undefined,
     module: './workflows/settings.js',
     handler: 'handleGroqSetting',
+    errorLabel: 'Settings',
+  },
+  {
+    flag: '--setup-codex',
+    alias: undefined,
+    module: './workflows/settings.js',
+    handler: 'handleCodexSetting',
+    errorLabel: 'Settings',
+  },
+  {
+    flag: '--setup-opencode',
+    alias: undefined,
+    module: './workflows/settings.js',
+    handler: 'handleOpenCodeSetting',
     errorLabel: 'Settings',
   },
   {
@@ -483,15 +490,15 @@ function showHelpMessage(): void {
 
   console.log(`  ${B}TRELLO${R}`)
   console.log(`    ${C}-tr, --trello${R}             Open Trello menu`)
-  console.log(`    ${C}-tl, --trello-list${R}        List boards and lists`)
   console.log(`    ${C}-tg, --trello-generate${R}    Generate tasks from Trello`)
   console.log('')
 
   console.log(`  ${B}SETTINGS${R}`)
-  console.log(`    ${C}     --setup-copilot${R}      Configure GitHub Copilot`)
   console.log(`    ${C}     --setup-gemini${R}       Configure Gemini AI`)
   console.log(`    ${C}     --setup-openrouter${R}   Configure OpenRouter AI`)
-  console.log(`    ${C}     --setup-groq${R}          Configure Groq AI (free)`)
+  console.log(`    ${C}     --setup-groq${R}         Configure Groq AI`)
+  console.log(`    ${C}     --setup-codex${R}        Configure OpenAI Codex`)
+  console.log(`    ${C}     --setup-opencode${R}     Check OpenCode Zen CLI availability`)
   console.log(`    ${C}     --setup-github${R}       Configure GitHub token`)
   console.log(`    ${C}     --setup-gitlab${R}       Configure GitLab token`)
   console.log(`    ${C}     --setup-trello${R}       Configure Trello integration`)

@@ -123,11 +123,11 @@ const handleStashCreate = async (): Promise<void> => {
   console.log('')
 
   // Stash type
-  const stashType = await select('Stash type:', [
+  const stashType = await select('Choose which changes to stash:', [
     { label: 'Stash tracked files only', value: 'default' },
     { label: 'Stash including untracked files', value: 'untracked' },
     { label: 'Stash everything (including ignored)', value: 'all' },
-    { label: 'Cancel', value: 'cancel' },
+    { label: 'Cancel stash creation', value: 'cancel' },
   ])
 
   if (stashType === 'cancel') return
@@ -179,15 +179,21 @@ const handleStashAction = async (stash: StashEntry): Promise<'back' | 'done'> =>
   }
   console.log(`${colors.cyan}└${line}┘${colors.reset}`)
 
-  const action = await select('Action:', [
-    { label: `${colors.green}Apply${colors.reset} — restore changes, keep stash`, value: 'apply' },
-    { label: `${colors.yellow}Pop${colors.reset} — restore changes, remove stash`, value: 'pop' },
+  const action = await select('Choose an action for this stash:', [
     {
-      label: `${colors.cyan}Show diff${colors.reset} — view full changes`,
+      label: `${colors.green}Apply stash${colors.reset} — restore changes, keep stash`,
+      value: 'apply',
+    },
+    {
+      label: `${colors.yellow}Pop stash${colors.reset} — restore changes, remove stash`,
+      value: 'pop',
+    },
+    {
+      label: `${colors.cyan}View full diff${colors.reset} — inspect stashed changes`,
       value: 'diff',
     },
-    { label: `${colors.red}Drop${colors.reset} — delete this stash`, value: 'drop' },
-    { label: 'Back', value: 'back' },
+    { label: `${colors.red}Drop stash${colors.reset} — permanently delete it`, value: 'drop' },
+    { label: 'Return to stash list', value: 'back' },
   ])
 
   switch (action) {
@@ -324,7 +330,7 @@ export const handleStash = async (): Promise<void> => {
             value: String(s.index),
           }
         })
-        stashOptions.push({ label: 'Back', value: 'back' })
+        stashOptions.push({ label: 'Return to stash menu', value: 'back' })
 
         const picked = await select('Select stash:', stashOptions)
         if (picked === 'back') {

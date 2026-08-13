@@ -173,14 +173,16 @@ const undoCommit = async (_prevHash: string): Promise<void> => {
       label: 'Hard reset — discard changes completely',
       value: 'hard',
     },
-    { label: 'Cancel', value: 'cancel' },
+    { label: 'Cancel undo', value: 'cancel' },
   ])
 
   if (action === 'cancel') return
 
   if (action === 'hard') {
     log.warn('This will permanently discard your changes!')
-    const sure = confirm('Are you sure?')
+    const sure = confirm(
+      'Confirm hard reset of the last commit? This permanently discards changes introduced after it.'
+    )
     if (!sure) return
   }
 
@@ -213,7 +215,7 @@ const undoAmend = async (prevHash: string): Promise<void> => {
       label: 'Mixed reset — restore pre-amend state, keep changes unstaged',
       value: 'mixed',
     },
-    { label: 'Cancel', value: 'cancel' },
+    { label: 'Cancel amend undo', value: 'cancel' },
   ])
 
   if (action === 'cancel') return
@@ -248,7 +250,7 @@ const undoMerge = async (): Promise<void> => {
       label: 'Revert merge — create a new commit that reverses the merge',
       value: 'revert',
     },
-    { label: 'Cancel', value: 'cancel' },
+    { label: 'Cancel merge undo', value: 'cancel' },
   ])
 
   if (action === 'cancel') return
@@ -268,7 +270,9 @@ const undoMerge = async (): Promise<void> => {
 
   if (action === 'reset') {
     log.warn('This will discard the merge commit!')
-    const sure = confirm('Are you sure?')
+    const sure = confirm(
+      'Confirm hard reset of the merge commit? This permanently discards the merge commit.'
+    )
     if (!sure) return
 
     spinner.start('Resetting merge...')
@@ -338,14 +342,16 @@ const undoPull = async (prevHash: string): Promise<void> => {
       label: 'Mixed reset — keep pulled changes as unstaged',
       value: 'mixed',
     },
-    { label: 'Cancel', value: 'cancel' },
+    { label: 'Cancel pull undo', value: 'cancel' },
   ])
 
   if (action === 'cancel') return
 
   if (action === 'hard') {
     log.warn('This will discard all pulled changes!')
-    const sure = confirm('Are you sure?')
+    const sure = confirm(
+      'Confirm hard reset of the pull? This permanently discards all changes introduced by the pull.'
+    )
     if (!sure) return
   }
 
@@ -372,7 +378,7 @@ const undoRebase = async (prevHash: string): Promise<void> => {
     // Rebase in progress
     const action = await select('Rebase is in progress:', [
       { label: 'Abort rebase — cancel completely', value: 'abort' },
-      { label: 'Cancel', value: 'cancel' },
+      { label: 'Cancel rebase abort', value: 'cancel' },
     ])
 
     if (action === 'cancel') return
@@ -416,7 +422,9 @@ const undoReset = (prevHash: string): void => {
   log.info('This will reverse the reset operation.')
   console.log(`  ${colors.gray}Will restore to ${shortHash(prevHash)}${colors.reset}`)
 
-  const doIt = confirm('Undo the reset?')
+  const doIt = confirm(
+    `Restore the repository to ${shortHash(prevHash)}? This hard reset replaces the current state.`
+  )
   if (!doIt) return
 
   const spinner = log.spinner()
@@ -450,14 +458,16 @@ const undoGeneric = async (prevHash: string): Promise<void> => {
       label: 'Hard — discard everything',
       value: 'hard',
     },
-    { label: 'Cancel', value: 'cancel' },
+    { label: 'Cancel repository reset', value: 'cancel' },
   ])
 
   if (action === 'cancel') return
 
   if (action === 'hard') {
     log.warn('This will discard all changes!')
-    const sure = confirm('Are you sure?')
+    const sure = confirm(
+      `Confirm hard reset to ${shortHash(prevHash)}? This permanently discards all current changes.`
+    )
     if (!sure) return
   }
 

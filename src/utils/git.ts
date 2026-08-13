@@ -346,7 +346,6 @@ export const pushWithRetry = (cmd: string, silent: boolean = true): void => {
           if (token) {
             // Store into env for this process; users should prefer credential helpers for persistence
             process.env.GITHUB_TOKEN = token
-            process.env.COPILOT_TOKEN = token
           }
         }
 
@@ -358,13 +357,4 @@ export const pushWithRetry = (cmd: string, silent: boolean = true): void => {
       throw error
     }
   }
-}
-
-/**
- * Branch naming result interface
- */
-export interface BranchNamingResult {
-  workingBranch: string
-  shouldRestart: boolean
-  cancelled: boolean
 }

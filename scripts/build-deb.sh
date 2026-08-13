@@ -48,11 +48,11 @@ Priority: optional
 Architecture: ${ARCH}
 Depends: git (>= 2.0)
 Maintainer: Agung Maulana Malik <amdev142@gmail.com>
-Homepage: https://github.com/rust142/geeto
+Homepage: https://github.com/IDNCraft/geeto
 Description: AI-powered Git workflow automation CLI
  Streamline your Git workflow with intelligent branch naming,
  commit messages, and Trello integration — powered by AI
- (Gemini, Copilot, OpenRouter).
+ (Gemini, OpenRouter, Groq, and Codex).
 EOF
 
 # Build .deb

@@ -13,14 +13,14 @@ import { log } from '../utils/logging.js'
  * Setup Trello config interactively
  */
 export const setupTrelloConfigInteractive = (): boolean => {
-  log.info('Trello integration is not configured for this project.\n')
+  log.info('Connect Trello to link cards to branches and generate task lists.\n')
 
-  log.info('To enable Trello task linking, you need:')
+  log.info('You need the following values:')
   log.info('  1. API Key from: https://trello.com/app-key')
   log.info('  2. Token (we will generate URL for you)')
   log.info('  3. Board ID (from board URL: trello.com/b/{BOARD_ID}/)\n')
 
-  const shouldSetup = confirm('Setup Trello integration now?')
+  const shouldSetup = confirm('Connect Trello now?')
   if (!shouldSetup) {
     // Remember the user declined so we don't prompt again automatically
     try {

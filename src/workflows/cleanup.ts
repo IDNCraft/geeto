@@ -236,7 +236,10 @@ export const handleInteractiveCleanup = async (): Promise<void> => {
     }
   })
 
-  const selectedNames = await multiSelect('Select branches to delete:', branchChoices)
+  const selectedNames = await multiSelect(
+    'Select branches to delete locally and/or remotely:',
+    branchChoices
+  )
 
   if (selectedNames.length === 0) {
     log.info('No branches selected. Cleanup cancelled.')
@@ -291,7 +294,9 @@ export const handleInteractiveCleanup = async (): Promise<void> => {
           // Stop spinner and clear line before interactive prompt
           spinner.fail(`Branch '${branch.name}' is not fully merged`)
           console.log('')
-          const forceDelete = confirm(`Force delete local?`)
+          const forceDelete = confirm(
+            `Force-delete local branch '${branch.name}'? It is not fully merged and may contain unmerged commits.`
+          )
           console.log('')
           if (forceDelete) {
             const spinner2 = log.spinner()

@@ -30,7 +30,7 @@ export const getCommitTypes = () => [
   { label: 'ci       - CI/CD changes', value: 'ci' as const },
   { label: 'build    - Build system changes', value: 'build' as const },
   { label: 'revert   - Revert changes', value: 'revert' as const },
-  { label: 'cancel', value: 'cancel' as const },
+  { label: 'Cancel commit', value: 'cancel' as const },
 ]
 
 export function normalizeAIOutput(input: string): string {
@@ -176,23 +176,4 @@ export function isConventionalLine(line: string): boolean {
   const left = line.slice(0, colonIndex).trim()
   const type = (left.split('(')[0] ?? '').trim()
   return COMMIT_TYPES.includes(type as CommitType)
-}
-
-export function validateCommitMessage(message: string): { valid: boolean; error?: string } {
-  const lines = message.split('\n').map((l) => l.trim())
-  const title = lines[0]
-
-  if (!title) {
-    return { valid: false, error: 'Commit message cannot be empty' }
-  }
-
-  if (!isConventionalLine(title)) {
-    return { valid: false, error: 'Title must follow conventional commit format' }
-  }
-
-  if (title.length > 100) {
-    return { valid: false, error: 'Title must be 100 characters or less' }
-  }
-
-  return { valid: true }
 }

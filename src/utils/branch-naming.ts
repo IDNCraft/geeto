@@ -1,4 +1,3 @@
-import type { CopilotModel } from '../api/copilot.js'
 import type { GeminiModel } from '../api/gemini.js'
 import type { GroqModel } from '../api/groq.js'
 import type { OpenRouterModel } from '../api/openrouter.js'
@@ -18,11 +17,11 @@ export const handleBranchNaming = async (
   separator: '-' | '_',
   trelloCardId: string,
   currentBranch: string,
-  aiProvider: 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'codex' = 'gemini',
-  model?: CopilotModel | OpenRouterModel | GeminiModel | GroqModel | string,
+  aiProvider: 'gemini' | 'openrouter' | 'groq' | 'codex' | 'opencode-zen' = 'gemini',
+  model?: OpenRouterModel | GeminiModel | GroqModel | string,
   updateModel?: (
-    provider: 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'codex',
-    model?: CopilotModel | OpenRouterModel | GeminiModel | GroqModel | string
+    provider: 'gemini' | 'openrouter' | 'groq' | 'codex' | 'opencode-zen',
+    model?: OpenRouterModel | GeminiModel | GroqModel | string
   ) => void
 ): Promise<BranchNamingResult> => {
   const { askQuestion } = await import('../cli/input.js')
@@ -52,10 +51,10 @@ export const handleBranchNaming = async (
     console.log('')
     displayChangedFiles(getChangedFilesWithStatus())
 
-    const stageChoice = (await select('What to stage?', [
-      { label: 'Stage all changes', value: 'all' },
-      { label: 'Already staged', value: 'skip' },
-      { label: 'Cancel', value: 'cancel' },
+    const stageChoice = (await select('Before generating a branch name, choose staged changes:', [
+      { label: 'Stage all current changes', value: 'all' },
+      { label: 'Use changes already staged', value: 'skip' },
+      { label: 'Cancel branch-name generation', value: 'cancel' },
     ])) as 'all' | 'skip' | 'cancel'
 
     switch (stageChoice) {
@@ -131,12 +130,6 @@ export const handleBranchNaming = async (
             aiSuffix = await generateBranchName(word, correction, model as GeminiModel)
             break
           }
-          case 'copilot': {
-            const { generateBranchName } = await import('../api/copilot.js')
-            const word = diff
-            aiSuffix = await generateBranchName(word, correction, model as CopilotModel)
-            break
-          }
           case 'openrouter': {
             const { generateBranchName } = await import('../api/openrouter.js')
             const word = diff
@@ -153,6 +146,11 @@ export const handleBranchNaming = async (
             aiSuffix = await generateBranchName(diff, correction, model as string)
             break
           }
+          case 'opencode-zen': {
+            const { generateBranchName } = await import('../api/opencode.js')
+            aiSuffix = await generateBranchName(diff, correction, model as string)
+            break
+          }
         }
         spinner.stop()
       } catch (error) {
@@ -163,19 +161,19 @@ export const handleBranchNaming = async (
 
     if (!aiSuffix || isTransientAIFailure(aiSuffix) || isContextLimitFailure(aiSuffix)) {
       const safeUpdate = (
-        provider: 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'codex',
+        provider: 'gemini' | 'openrouter' | 'groq' | 'codex' | 'opencode-zen',
         modelStr?: string
       ) => {
         if (updateModel) {
           // forward to provided updater (cast since caller may use narrower model types)
-          updateModel(provider, modelStr as unknown as CopilotModel | OpenRouterModel | GeminiModel)
+          updateModel(provider, modelStr as unknown as OpenRouterModel | GeminiModel)
         }
       }
 
       aiSuffix = await interactiveAIFallback(
         aiSuffix,
         aiProvider ?? 'gemini',
-        model as CopilotModel | OpenRouterModel | GeminiModel,
+        model as OpenRouterModel | GeminiModel,
         diff,
         correction,
         currentBranch,
@@ -248,9 +246,9 @@ export const handleBranchNaming = async (
             label: `Try again with ${getAIProviderShortName(aiProvider)}${modelDisplay ? ` (${modelDisplay})` : ''} model`,
             value: 'try-same',
           },
-          { label: 'Change model', value: 'change-model' },
-          { label: 'Change AI provider', value: 'change-provider' },
-          { label: 'Edit manually', value: 'edit' },
+          { label: 'Choose another model', value: 'change-model' },
+          { label: 'Choose another AI provider', value: 'change-provider' },
+          { label: 'Enter the branch name manually', value: 'edit' },
           { label: 'Back to branch menu', value: 'back' },
         ]
       )
@@ -265,14 +263,17 @@ export const handleBranchNaming = async (
           // change only the current provider's model — use centralized helper
           const provKey = (aiProvider ?? 'gemini') as
             | 'gemini'
-            | 'copilot'
             | 'openrouter'
             | 'groq'
+            | 'codex'
+            | 'opencode-zen'
             | string
           const provider = (provKey === 'manual' ? 'gemini' : provKey) as
             | 'gemini'
-            | 'copilot'
             | 'openrouter'
+            | 'groq'
+            | 'codex'
+            | 'opencode-zen'
           const chosen = await chooseModelForProvider(
             provider,
             'Choose model:',
@@ -286,17 +287,18 @@ export const handleBranchNaming = async (
             skipRegenerate = true
             continue
           }
-          updateModel?.(provider, chosen as unknown as CopilotModel | OpenRouterModel | GeminiModel)
-          model = chosen as unknown as CopilotModel | OpenRouterModel | GeminiModel
+          updateModel?.(provider, chosen as unknown as OpenRouterModel | GeminiModel)
+          model = chosen as unknown as OpenRouterModel | GeminiModel
           correction = ''
           continue
         }
         case 'change-provider': {
           const prov = await select('Choose AI provider:', [
             { label: 'Gemini', value: 'gemini' },
-            { label: 'Copilot (Recommended)', value: 'copilot' },
             { label: 'OpenRouter', value: 'openrouter' },
             { label: 'Groq', value: 'groq' },
+            { label: 'OpenAI Codex', value: 'codex' },
+            { label: 'OpenCode Zen', value: 'opencode-zen' },
             { label: 'Back to suggested branch selection', value: 'cancel-prov' },
           ])
           if (prov === 'cancel-prov') {
@@ -306,7 +308,7 @@ export const handleBranchNaming = async (
           }
           // Centralized provider/model selection helper
           const chosen = await chooseModelForProvider(
-            prov as 'gemini' | 'copilot' | 'openrouter' | 'groq',
+            prov as 'gemini' | 'openrouter' | 'groq' | 'codex' | 'opencode-zen',
             'Choose model:',
             'Back to suggested branch selection'
           )
@@ -319,12 +321,6 @@ export const handleBranchNaming = async (
             continue
           }
           switch (prov) {
-            case 'copilot': {
-              updateModel?.('copilot', chosen as unknown as CopilotModel)
-              aiProvider = 'copilot'
-              model = chosen as unknown as CopilotModel
-              break
-            }
             case 'openrouter': {
               updateModel?.('openrouter', chosen as unknown as OpenRouterModel)
               aiProvider = 'openrouter'
@@ -334,6 +330,18 @@ export const handleBranchNaming = async (
             case 'groq': {
               updateModel?.('groq', chosen)
               aiProvider = 'groq'
+              model = chosen
+              break
+            }
+            case 'codex': {
+              updateModel?.('codex', chosen)
+              aiProvider = 'codex'
+              model = chosen
+              break
+            }
+            case 'opencode-zen': {
+              updateModel?.('opencode-zen', chosen)
+              aiProvider = 'opencode-zen'
               model = chosen
               break
             }
@@ -358,14 +366,14 @@ export const handleBranchNaming = async (
         }
       }
     } else {
-      const acceptAi = await select('Accept this branch name?', [
-        { label: 'Yes, use it', value: 'accept' },
-        { label: 'Regenerate', value: 'regenerate' },
-        { label: 'Correct AI (give feedback)', value: 'correct' },
-        { label: 'Change model', value: 'change-model' },
-        { label: 'Change AI provider', value: 'change-provider' },
-        { label: 'Edit manually', value: 'edit' },
-        { label: 'Back to branch menu', value: 'back' },
+      const acceptAi = await select('Choose what to do with this branch name:', [
+        { label: 'Use this branch name', value: 'accept' },
+        { label: 'Generate a new branch name', value: 'regenerate' },
+        { label: 'Give AI feedback', value: 'correct' },
+        { label: 'Choose another model', value: 'change-model' },
+        { label: 'Choose another AI provider', value: 'change-provider' },
+        { label: 'Edit branch name manually', value: 'edit' },
+        { label: 'Return to branch menu', value: 'back' },
       ])
 
       switch (acceptAi) {
@@ -387,22 +395,6 @@ export const handleBranchNaming = async (
           // change only the current provider's model
           const currentProv = aiProvider ?? 'gemini'
           switch (currentProv) {
-            case 'copilot': {
-              const cop = await import('../api/copilot.js')
-              const models = await cop.getCopilotModels()
-              const copOptions = models.some((m) => m.value === 'back')
-                ? models
-                : [...models, { label: 'Back to suggested branch selection', value: 'back' }]
-              const chosen = await select('Choose GitHub Copilot model:', copOptions)
-              if (chosen === 'back') {
-                skipRegenerate = true
-                continue
-              }
-              updateModel?.('copilot', chosen as unknown as CopilotModel)
-              model = chosen as unknown as CopilotModel
-
-              break
-            }
             case 'openrouter': {
               const or = await import('../api/openrouter.js')
               const models = await or.getOpenRouterModels()
@@ -456,9 +448,10 @@ export const handleBranchNaming = async (
         case 'change-provider': {
           const prov = await select('Choose AI provider:', [
             { label: 'Gemini', value: 'gemini' },
-            { label: 'Copilot (Recommended)', value: 'copilot' },
             { label: 'OpenRouter', value: 'openrouter' },
             { label: 'Groq', value: 'groq' },
+            { label: 'OpenAI Codex', value: 'codex' },
+            { label: 'OpenCode Zen', value: 'opencode-zen' },
             { label: 'Back to suggested branch selection', value: 'cancel-prov' },
           ])
           if (prov === 'cancel-prov') {
@@ -469,7 +462,7 @@ export const handleBranchNaming = async (
 
           // Centralized provider/model selection helper
           const chosen = await chooseModelForProvider(
-            prov as 'gemini' | 'copilot' | 'openrouter' | 'groq',
+            prov as 'gemini' | 'openrouter' | 'groq' | 'codex' | 'opencode-zen',
             'Choose model:',
             'Back to suggested branch selection'
           )
@@ -482,12 +475,6 @@ export const handleBranchNaming = async (
             continue
           }
           switch (prov) {
-            case 'copilot': {
-              updateModel?.('copilot', chosen as unknown as CopilotModel)
-              aiProvider = 'copilot'
-              model = chosen as unknown as CopilotModel
-              break
-            }
             case 'openrouter': {
               updateModel?.('openrouter', chosen as unknown as OpenRouterModel)
               aiProvider = 'openrouter'
@@ -497,6 +484,18 @@ export const handleBranchNaming = async (
             case 'groq': {
               updateModel?.('groq', chosen)
               aiProvider = 'groq'
+              model = chosen
+              break
+            }
+            case 'codex': {
+              updateModel?.('codex', chosen)
+              aiProvider = 'codex'
+              model = chosen
+              break
+            }
+            case 'opencode-zen': {
+              updateModel?.('opencode-zen', chosen)
+              aiProvider = 'opencode-zen'
               model = chosen
               break
             }

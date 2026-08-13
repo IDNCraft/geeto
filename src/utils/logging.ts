@@ -98,7 +98,7 @@ export const log = {
   banner: () => {
     console.log('')
     console.log(
-      `  ${colors.cyan}${colors.bright}⚡ Geeto${colors.reset}  ${colors.gray}AI-Powered Git Workflow${colors.reset}`
+      `  ${colors.cyan}${colors.bright}⚡ Geeto${colors.reset}  ${colors.gray}Git workflows, from branch to release${colors.reset}`
     )
     console.log('')
   },

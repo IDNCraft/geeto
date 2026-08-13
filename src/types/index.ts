@@ -1,4 +1,3 @@
-import type { CopilotModel } from '../api/copilot.js'
 import type { GeminiModel } from '../api/gemini.js'
 import type { GroqModel } from '../api/groq.js'
 import type { OpenRouterModel } from '../api/openrouter.js'
@@ -18,21 +17,15 @@ export interface GeetoState {
   targetBranch: string
   currentBranch: string
   timestamp: string
-  aiProvider?: 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'codex' | 'manual'
-  copilotModel?: CopilotModel
+  aiProvider?: 'gemini' | 'openrouter' | 'groq' | 'codex' | 'opencode-zen' | 'manual'
   openrouterModel?: OpenRouterModel
   geminiModel?: GeminiModel
   groqModel?: GroqModel
   codexModel?: string
+  opencodeModel?: string
   // Flags for explicitly skipped steps
   skippedCommit?: boolean
   skippedPush?: boolean
-}
-
-export interface BranchNamingResult {
-  workingBranch: string
-  shouldRestart: boolean
-  cancelled: boolean
 }
 
 export interface TrelloConfig {
@@ -88,21 +81,6 @@ export interface BranchStrategyConfig {
 }
 
 export type TaskPlatform = 'trello' | 'none'
-
-export interface TaskPlatformOption {
-  name: string
-  value: TaskPlatform
-  enabled: boolean
-}
-
-export interface GeminiResponse {
-  candidates?: Array<{
-    content?: {
-      parts?: Array<{ text?: string }>
-    }
-  }>
-  error?: { message: string }
-}
 
 export interface GeminiConfig {
   apiKey: string

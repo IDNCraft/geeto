@@ -80,11 +80,11 @@ export const handleUncommittedChangesBeforeCheckout = async (
   }
   console.log('')
 
-  const choice = await select('How would you like to proceed?', [
-    { label: 'Stash changes and checkout', value: 'stash' },
-    { label: 'Commit changes first', value: 'commit' },
-    { label: 'Force checkout (discard changes)', value: 'force' },
-    { label: 'Cancel checkout', value: 'cancel' },
+  const choice = await select('Uncommitted changes block checkout. Choose how to protect them:', [
+    { label: 'Stash changes, then checkout', value: 'stash' },
+    { label: 'Stage changes, then commit before checkout', value: 'commit' },
+    { label: 'Force checkout and discard changes', value: 'force' },
+    { label: 'Leave checkout unchanged', value: 'cancel' },
   ])
 
   switch (choice) {
@@ -186,7 +186,7 @@ export const safeCheckout = async (
             }
             console.log('')
 
-            const conflictChoice = await select('What would you like to do?', [
+            const conflictChoice = await select('Checkout has conflicts. Choose how to proceed:', [
               { label: 'Resolve conflicts manually (stay on this branch)', value: 'resolve' },
               { label: 'Abort and go back to selection', value: 'abort' },
             ])
@@ -372,7 +372,7 @@ const handlePushAuthError = async (): Promise<'retry' | 'cancel'> => {
   log.info('  4. Check network connectivity')
   console.log('')
 
-  const choice = await select('What would you like to do?', [
+  const choice = await select('Push authentication failed. Choose how to proceed:', [
     { label: 'Retry push', value: 'retry' },
     { label: 'Cancel push', value: 'cancel' },
   ])
@@ -545,7 +545,7 @@ export const safeCommit = async (
     const stagedFiles = execSilent('git diff --name-only --cached')
     if (!stagedFiles.trim() && !options?.amend) {
       log.warn('No staged changes to commit')
-      const choice = await select('What would you like to do?', [
+      const choice = await select('No staged changes found. Choose a commit action:', [
         { label: 'Stage all changes and commit', value: 'stage-all' },
         { label: 'Cancel commit', value: 'cancel' },
       ])

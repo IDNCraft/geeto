@@ -12,7 +12,7 @@ Thank you for your interest in contributing to Geeto! This guide covers everythi
 ## Setup
 
 ```bash
-git clone https://github.com/rust142/geeto.git
+git clone https://github.com/IDNCraft/geeto.git
 cd geeto
 bun install
 bun run build
@@ -100,7 +100,7 @@ bun run format         # Format with Prettier
 
 ```text
 src/
-├── api/          # AI provider SDKs (Gemini, Copilot, OpenRouter) & Trello API
+├── api/          # AI provider SDKs (Gemini, OpenRouter) & Trello API
 ├── cli/          # Interactive CLI components (select menu, input, prompts)
 ├── core/         # Setup flows, constants, menu definitions
 ├── types/        # TypeScript interfaces and type definitions
@@ -110,7 +110,7 @@ src/
 
 | Directory    | Key Files                                                              |
 | ------------ | ---------------------------------------------------------------------- |
-| `api/`       | `gemini-sdk.ts`, `copilot-sdk.ts`, `openrouter-sdk.ts`, `trello.ts`    |
+| `api/`       | `gemini-sdk.ts`, `openrouter-sdk.ts`, `trello.ts`                      |
 | `cli/`       | `input.ts` (prompts), `menu.ts` (select menus)                         |
 | `core/`      | `setup.ts` (provider setup), `constants.ts`                            |
 | `utils/`     | `git.ts`, `git-ai.ts`, `config.ts`, `state.ts`, `exec.ts`              |
@@ -133,8 +133,8 @@ src/
 
 ## Need Help?
 
-- [Open an issue](https://github.com/rust142/geeto/issues)
-- Check [existing issues](https://github.com/rust142/geeto/issues?q=is%3Aissue)
+- [Open an issue](https://github.com/IDNCraft/geeto/issues)
+- Check [existing issues](https://github.com/IDNCraft/geeto/issues?q=is%3Aissue)
 - Read the [README](README.md)
 
 ## License

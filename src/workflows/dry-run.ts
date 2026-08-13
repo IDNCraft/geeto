@@ -32,7 +32,10 @@ export const handleDryRunMenu = async (): Promise<void> => {
   log.step('Dry-Run Mode')
   log.info('Pick a command to simulate — no changes will be made.\n')
 
-  const choice = await select('Which command to dry-run?', DRY_RUN_COMMANDS)
+  const choice = await select(
+    'Choose a command to simulate without making changes:',
+    DRY_RUN_COMMANDS
+  )
 
   setDryRun(true)
   printDryRunBanner()

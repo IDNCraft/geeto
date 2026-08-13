@@ -565,17 +565,17 @@ export const handleHistory = async (): Promise<void> => {
 
     // Pagination + filter menu
     console.log('')
-    const compactLabel = compact ? 'Detailed view' : 'Compact view'
+    const compactLabel = compact ? 'Switch to detailed view' : 'Switch to compact view'
     const filterLabel = authorFilter ? `Clear filter (${authorFilter})` : 'Filter by author'
 
-    const action = await select('', [
+    const action = await select('History actions:', [
       {
         label: `Load more (${offset + PAGE_SIZE + 1}-${offset + PAGE_SIZE * 2})`,
         value: 'more',
       },
       { label: compactLabel, value: 'compact' },
       { label: filterLabel, value: 'filter' },
-      { label: 'Done', value: 'done' },
+      { label: 'Close history', value: 'done' },
     ])
 
     switch (action) {
@@ -602,7 +602,7 @@ export const handleHistory = async (): Promise<void> => {
           }
           const picked = await select('Filter by author:', [
             ...authors.map((a) => ({ label: a, value: a })),
-            { label: 'Cancel', value: '__cancel__' },
+            { label: 'Keep current history view', value: '__cancel__' },
           ])
           if (picked !== '__cancel__') {
             authorFilter = picked

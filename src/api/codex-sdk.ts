@@ -14,6 +14,8 @@ import {
 import { log } from '../utils/logging.js'
 
 let codexInstance: Codex | null = null
+const CODEX_RUNTIME_HOME = path.join(os.homedir(), '.geeto', 'codex-runtime', 'home')
+const CODEX_RUNTIME_AUTH = path.join(CODEX_RUNTIME_HOME, '.codex', 'auth.json')
 
 /**
  * Read the API key stored by geeto's token-based setup.
@@ -31,13 +33,34 @@ const readStoredApiKey = (): string | null => {
   }
 }
 
+const prepareRuntimeHome = (): void => {
+  fs.mkdirSync(path.dirname(CODEX_RUNTIME_AUTH), { recursive: true, mode: 0o700 })
+
+  const globalAuthPath = path.join(os.homedir(), '.codex', 'auth.json')
+  if (fs.existsSync(globalAuthPath)) {
+    fs.copyFileSync(globalAuthPath, CODEX_RUNTIME_AUTH)
+    fs.chmodSync(CODEX_RUNTIME_AUTH, 0o600)
+  } else {
+    fs.rmSync(CODEX_RUNTIME_AUTH, { force: true })
+  }
+}
+
+const getCodexEnvironment = (): Record<string, string> => {
+  const environment: Record<string, string> = { HOME: CODEX_RUNTIME_HOME }
+  for (const key of ['PATH', 'TMPDIR', 'LANG', 'LC_ALL', 'TERM', 'NO_COLOR']) {
+    const value = process.env[key]
+    if (value) environment[key] = value
+  }
+  return environment
+}
+
 const ensureClient = (): boolean => {
   if (codexInstance) return true
   try {
+    prepareRuntimeHome()
     const apiKey = readStoredApiKey()
-    // Pass apiKey only when using token auth; OAuth mode passes nothing so
-    // the Codex CLI uses its own ~/.codex/auth.json token instead.
-    codexInstance = apiKey ? new Codex({ apiKey }) : new Codex()
+    const options = { env: getCodexEnvironment() }
+    codexInstance = apiKey ? new Codex({ ...options, apiKey }) : new Codex(options)
     return true
   } catch {
     codexInstance = null
@@ -67,7 +90,7 @@ export const generateBranchName = async (
     return normalizeBranchName(first) || null
   } catch (error) {
     log.clearLine()
-    log.warn('Codex Error: ' + String(error))
+    log.warn('OpenAI Codex error: ' + String(error))
     return null
   }
 }
@@ -87,7 +110,7 @@ export const generateCommitMessage = async (
     return cleanAIContent(content, { normalizeBlankLines: true, minLength: MIN_AI_RESPONSE_LENGTH })
   } catch (error) {
     log.clearLine()
-    log.warn('Codex Error: ' + String(error))
+    log.warn('OpenAI Codex error: ' + String(error))
     return null
   }
 }
@@ -108,7 +131,7 @@ export const generateReleaseNotes = async (
     return cleanAIContent(content)
   } catch (error) {
     log.clearLine()
-    log.warn('Codex Error: ' + String(error))
+    log.warn('OpenAI Codex error: ' + String(error))
     return null
   }
 }

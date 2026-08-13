@@ -14,6 +14,6 @@ Rules:
 Example:
 refactor(ai): migrate providers to SDKs
 
-Replaces direct API/CLI calls for Copilot and Gemini with SDK integrations.
+Replaces direct API/CLI calls for Gemini with SDK integrations.
 This simplifies code, improves maintainability, and adds dynamic model
 fetching. Updates .gitignore for geeto binaries.

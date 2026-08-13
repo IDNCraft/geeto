@@ -145,11 +145,11 @@ export const handleAmend = async (): Promise<void> => {
 
   // Amend options
   console.log('')
-  const action = await select('What to amend?', [
+  const action = await select('Choose what to change in the last commit:', [
     { label: 'Reword — change commit message only', value: 'reword' },
     { label: 'Add files — stage more files into the commit', value: 'add-files' },
     { label: 'Both — change message and add files', value: 'both' },
-    { label: 'Cancel', value: 'cancel' },
+    { label: 'Cancel amendment', value: 'cancel' },
   ])
 
   if (action === 'cancel') return
@@ -246,7 +246,9 @@ export const handleAmend = async (): Promise<void> => {
     try {
       execSilent(`git rev-parse --verify origin/${current}`)
       console.log('')
-      const forcePush = confirm('Force push to update remote?')
+      const forcePush = confirm(
+        `Force-push rewritten history to origin/${current}? This replaces the remote branch history.`
+      )
       if (forcePush) {
         const pushSpinner = new ScrambleProgress()
         pushSpinner.start([`Force pushing to origin/${current}`])

@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.14.0](https://github.com/IDNCraft/geeto/compare/v0.13.0...v0.14.0) (2026-08-13)
+
+### Features
+
+* feat(ai): modernize providers and CLI workflows (#76) ([eb9f673](https://github.com/IDNCraft/geeto/commit/eb9f673))
+
 ## [0.13.0](https://github.com/rust142/geeto/compare/v0.12.0...v0.13.0) (2026-07-15)
 
 ### Features

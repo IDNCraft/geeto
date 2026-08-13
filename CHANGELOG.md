@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.14.1](https://github.com/IDNCraft/geeto/compare/v0.14.0...v0.14.1) (2026-08-13)
+
+### Bug Fixes
+
+* fix(cli): refine interactive output and branch safeguards ([0fd95bd](https://github.com/IDNCraft/geeto/commit/0fd95bd))
+
+### Other Changes
+
+* docs(readme): add IDNCraft migration guide ([9541cb5](https://github.com/IDNCraft/geeto/commit/9541cb5))
+
 ## [0.14.0](https://github.com/IDNCraft/geeto/compare/v0.13.0...v0.14.0) (2026-08-13)
 
 ### Features

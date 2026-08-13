@@ -680,7 +680,7 @@ const generateNewMessages = async (
     const spinner = new ScrambleProgress()
     try {
       spinner.start([
-        `Generating commit message with ${getAIProviderShortName(currentProvider)}${currentModel ? ` (${currentModel})` : ''}`,
+        `Analyzing changes with ${getAIProviderShortName(currentProvider)}${currentModel ? ` (${currentModel})` : ''}`,
       ])
 
       initialAiResult = await generateCommitMessageWithProvider(

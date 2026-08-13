@@ -251,7 +251,7 @@ export const handleSyncReleases = async (): Promise<void> => {
                 : geminiModel
       const modelDisplay = getModelValue(currentModel)
       aiSpinner.start([
-        `Generating release notes with ${getAIProviderShortName(aiProvider)}${modelDisplay ? ` (${modelDisplay})` : ''}`,
+        `Analyzing commits with ${getAIProviderShortName(aiProvider)}${modelDisplay ? ` (${modelDisplay})` : ''}`,
       ])
 
       const aiResult = await generateReleaseNotesWithProvider(

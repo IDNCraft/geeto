@@ -142,7 +142,7 @@ const callAIForPR = async (
   const modelDisplay = model ? ` (${model})` : ''
 
   const spinner = log.spinner()
-  spinner.start(`Generating PR with ${providerName}${modelDisplay}...`)
+  spinner.start(`Analyzing changes with ${providerName}${modelDisplay}...`)
 
   let result: string | null = null
   try {
@@ -289,7 +289,6 @@ export const handleCreatePR = async (): Promise<void> => {
     if (!useAI) break aiBlock
 
     aiUsed = true
-    log.info(`Git diff size: ${diff.length} chars`)
     console.log('')
 
     let correction = ''
@@ -375,7 +374,6 @@ export const handleCreatePR = async (): Promise<void> => {
       prTitle = aiResult.title
       prBody = aiResult.body
       showAIPreview(prLabel, prTitle, prBody)
-      log.info('Incorrect? check .geeto/last-ai-suggestion.json (possible AI/context limit).')
 
       const action = await select(`Choose what to do with this ${prLabel}:`, [
         { label: `Use this ${prLabel}`, value: 'accept' },

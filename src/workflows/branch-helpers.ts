@@ -330,7 +330,7 @@ export async function handleTrelloCase(
 
     // Step 2: Generate short branch name
     spinner.start(
-      `Generating short branch name using ${getAIProviderShortName(aiProvider)}${
+      `Analyzing changes with ${getAIProviderShortName(aiProvider)}${
         modelDisplay ? ` (${modelDisplay})` : ''
       }...`
     )
@@ -415,9 +415,6 @@ export async function handleTrelloCase(
       const contextLimitDetected = isContextLimitFailure(aiSuffix)
       if (!contextLimitDetected) {
         log.ai(`Suggested: ${colors.cyan}${colors.bright}${workingBranch}${colors.reset}`)
-        log.info(
-          'Incorrect Suggestion? check .geeto/last-ai-suggestion.json (possible AI/context limit).\n'
-        )
       }
     }
 

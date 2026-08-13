@@ -40,7 +40,7 @@ const callAIForIssue = async (
   const modelDisplay = model ? ` (${model})` : ''
 
   const spinner = log.spinner()
-  spinner.start(`Generating issue with ${providerName}${modelDisplay}...`)
+  spinner.start(`Analyzing issue details with ${providerName}${modelDisplay}...`)
 
   let result: string | null = null
   try {

@@ -395,7 +395,7 @@ export const handleCommitWorkflow = async (
       useAutoTool = true
     } else {
       useAutoTool = confirm(
-        `\nUse ${getAIProviderShortName(aiProvider)}${modelName ? ` (${modelName})` : ''} for commit? (recommended)`
+        `Use ${getAIProviderShortName(aiProvider)}${modelName ? ` (${modelName})` : ''} for commit? (recommended)`
       )
     }
 
@@ -412,7 +412,6 @@ export const handleCommitWorkflow = async (
     return false
   }
 
-  log.info(`Git diff size: ${diff.length} chars`)
   console.log('')
 
   // Use chosen provider; prompt model and allow going back to provider selection.
@@ -568,7 +567,7 @@ export const handleCommitWorkflow = async (
       }
 
       spinner.start([
-        `Generating commit message with ${getAIProviderShortName(currentProvider)}${currentModel ? ` (${currentModel})` : ''}`,
+        `Analyzing changes with ${getAIProviderShortName(currentProvider)}${currentModel ? ` (${currentModel})` : ''}`,
       ])
 
       initialAiResult = await generateCommitMessageWithProvider(
@@ -875,9 +874,6 @@ export const handleCommitWorkflow = async (
         if (body) {
           console.log(`\n${colors.cyan}${body}${colors.reset}\n`)
         }
-        log.info(
-          'Incorrect Suggestion? check .geeto/last-ai-suggestion.json (possible AI/context limit).'
-        )
       } catch {
         /* ignore file write failures */
       }

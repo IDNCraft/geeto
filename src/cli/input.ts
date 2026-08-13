@@ -131,6 +131,9 @@ export const confirm = (question: string, defaultYes: boolean = true): boolean =
   // Strip leading newlines from question — render them once as spacing, not on every redraw
   const leadingNewlines = question.match(/^\n+/)?.[0] ?? ''
   const cleanQuestion = question.slice(leadingNewlines.length)
+  const promptWidth = cleanQuestion.length + suffix.length + 2
+  const questionWraps = promptWidth >= (process.stdout.columns ?? 80)
+  const interactiveQuestion = questionWraps ? '' : `${cleanQuestion} `
 
   /** Render the interactive prompt line (single-line overwrite). */
   const render = (): void => {
@@ -140,18 +143,18 @@ export const confirm = (question: string, defaultYes: boolean = true): boolean =
         : selected
           ? '\u001B[36m\u001B[1mY\u001B[0m'
           : '\u001B[36m\u001B[1mN\u001B[0m'
-    const line = `${cleanQuestion} ${suffix} ${answer}`
+    const line = `${interactiveQuestion}${suffix} ${answer}`
     process.stdout.write(`\r${line}\u001B[K`)
   }
 
   /** Render the final confirmed state and move to next line. */
   const renderFinal = (label: string): void => {
-    const line = `${cleanQuestion} ${suffix} \u001B[36m${label}\u001B[0m`
+    const line = `${interactiveQuestion}${suffix} \u001B[36m${label}\u001B[0m`
     process.stdout.write(`\r${line}\u001B[K\n`)
   }
 
   // Write leading newlines once, then initial render on the new line
-  process.stdout.write(leadingNewlines + '\n')
+  process.stdout.write(`${leadingNewlines}\n${questionWraps ? `${cleanQuestion}\n` : ''}`)
   render()
 
   // Enter raw mode for key-by-key reading

@@ -24,7 +24,7 @@ function boxRow(label: string, value: string): string {
 }
 
 function boxBottom(): string {
-  return `${colors.cyan}└${'─'.repeat(BOX_W + 1)}┘${colors.reset}`
+  return `${colors.cyan}└${'─'.repeat(BOX_W)}┘${colors.reset}`
 }
 
 /* ────────────────────────── status helpers ─────────────────────────── */

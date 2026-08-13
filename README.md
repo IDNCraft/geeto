@@ -20,6 +20,7 @@ Stage → Branch → Commit → Push → Merge → Cleanup
 
 ```bash
 brew tap IDNCraft/geeto
+brew trust --formula idncraft/geeto/geeto
 brew install geeto
 ```
 
@@ -53,6 +54,7 @@ On the first run, choose an AI provider and follow the guided workflow. Geeto pr
 - [CLI Reference](#cli-reference)
 - [Configuration](#configuration)
 - [Installation](#installation)
+- [Migrating from rust142](#migrating-from-rust142)
 - [Development](#development)
 
 ---
@@ -252,7 +254,15 @@ Choose the package that matches your environment:
 
 ```bash
 brew tap IDNCraft/geeto
+brew trust --formula idncraft/geeto/geeto
 brew install geeto
+```
+
+If the legacy tap is still installed, remove it before installing Geeto:
+
+```bash
+brew untap rust142/geeto
+brew install idncraft/geeto/geeto
 ```
 
 ### npm or Bun
@@ -308,6 +318,52 @@ bun link
 | Standalone binary   | Git 2.0 or newer              |
 | npm                 | Node.js 18 or newer, Git 2.0+ |
 | Bun / source        | Bun 1.0 or newer, Git 2.0+    |
+
+## Migrating from rust142
+
+Geeto moved from `rust142/geeto` to `IDNCraft/geeto`. Existing `.geeto/` project and user configuration remains compatible; do not delete it during migration.
+
+### Homebrew
+
+Remove the legacy formula and tap, then install from IDNCraft:
+
+```bash
+brew uninstall geeto
+brew untap rust142/geeto
+brew tap IDNCraft/geeto
+brew trust --formula idncraft/geeto/geeto
+brew install idncraft/geeto/geeto
+```
+
+### npm or Bun
+
+The package name remains `geeto`, so reinstalling updates the existing global package:
+
+```bash
+npm install -g geeto@latest
+# or
+bun install -g geeto@latest
+```
+
+### Source checkout
+
+Point the existing clone at the new repository before pulling updates:
+
+```bash
+git remote set-url origin git@github.com:IDNCraft/geeto.git
+git remote -v
+git pull
+```
+
+### Standalone binary or Debian package
+
+Download the replacement binary or `.deb` from [IDNCraft releases](https://github.com/IDNCraft/geeto/releases/latest) and install it over the previous version.
+
+Verify the migrated installation:
+
+```bash
+geeto --version
+```
 
 ## Maintenance
 

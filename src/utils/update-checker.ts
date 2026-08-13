@@ -13,6 +13,8 @@ const CACHE_FILE = path.join(process.cwd(), '.geeto', 'update-check.json')
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000
 const INSTALL_SCRIPT_URL = 'https://raw.githubusercontent.com/IDNCraft/geeto/main/tools/install.sh'
 const GITHUB_REPO = 'IDNCraft/geeto'
+const HOMEBREW_FORMULA_URL =
+  'https://raw.githubusercontent.com/IDNCraft/homebrew-geeto/main/Formula/geeto.rb'
 
 interface UpdateInfo {
   latestVersion: string
@@ -123,6 +125,29 @@ export function methodLabel(method: InstallMethod): string {
 
 async function fetchLatestBrewVersion(): Promise<string | null> {
   try {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => {
+      controller.abort()
+    }, 3000)
+
+    try {
+      const response = await fetch(HOMEBREW_FORMULA_URL, {
+        signal: controller.signal,
+        cache: 'no-store',
+      })
+      if (response.ok) {
+        const formula = await response.text()
+        const version = formula.match(/^\s*version\s+"([^"]+)"/m)?.[1]
+        if (version) return version
+      }
+    } finally {
+      clearTimeout(timeout)
+    }
+  } catch {
+    /* fall back to local Homebrew metadata */
+  }
+
+  try {
     const json = execSilent('brew info geeto --json=v2')
     const data = JSON.parse(json) as {
       formulae?: Array<{ versions?: { stable?: string } }>
@@ -195,7 +220,7 @@ function updateCommand(method: InstallMethod): string {
       return 'bun install -g geeto@latest'
     }
     case 'homebrew': {
-      return 'brew upgrade geeto'
+      return 'brew upgrade idncraft/geeto/geeto'
     }
     case 'binary':
     case 'unknown': {

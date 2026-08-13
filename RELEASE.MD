@@ -1,5 +1,15 @@
 # Releases
 
+## v0.14.2 — August 13, 2026
+
+### What's New?
+
+#### Bug Fixes
+
+- Improved update checks by retrieving the latest Homebrew version directly from the source.
+
+---
+
 ## v0.14.1 — August 13, 2026
 
 ### What's New?

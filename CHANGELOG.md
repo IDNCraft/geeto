@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.14.2](https://github.com/IDNCraft/geeto/compare/v0.14.1...v0.14.2) (2026-08-13)
+
+### Bug Fixes
+
+* fix(update-checker): fetch Homebrew formula version remotely ([dd1c2c7](https://github.com/IDNCraft/geeto/commit/dd1c2c7))
+
 ## [0.14.1](https://github.com/IDNCraft/geeto/compare/v0.14.0...v0.14.1) (2026-08-13)
 
 ### Bug Fixes

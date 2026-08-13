@@ -1,6 +1,5 @@
 /** Helper functions extracted from main.ts to reduce function size. */
 
-import type { CopilotModel } from '../api/copilot.js'
 import type { GeminiModel } from '../api/gemini.js'
 import type { GroqModel } from '../api/groq.js'
 import type { OpenRouterModel } from '../api/openrouter.js'
@@ -46,12 +45,12 @@ export type MainOpts = {
 }
 
 export interface CheckpointResult {
-  aiProvider: 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'codex' | 'manual'
-  copilotModel?: CopilotModel
+  aiProvider: 'gemini' | 'openrouter' | 'groq' | 'codex' | 'opencode-zen' | 'manual'
   openrouterModel?: OpenRouterModel
   geminiModel?: GeminiModel
   groqModel?: GroqModel
   codexModel?: string
+  opencodeModel?: string
   shouldResume: boolean
   suppressStagingDoneMessage: boolean
   savedState: GeetoState | null
@@ -69,19 +68,19 @@ export async function resolveCheckpointAndProvider(
 ): Promise<CheckpointResult> {
   const savedState = loadState()
   let aiProvider: CheckpointResult['aiProvider']
-  let copilotModel: CopilotModel | undefined
   let openrouterModel: OpenRouterModel | undefined
   let geminiModel: GeminiModel | undefined
   let groqModel: GroqModel | undefined
   let codexModel: string | undefined
+  let opencodeModel: string | undefined
   let shouldResume = false
   let suppressStagingDoneMessage = false
 
   if (savedState) {
+    const stepName = getStepName(savedState.step)
     if (!suppressLogs) {
       const formattedTimestamp = formatTimestampLocale(savedState.timestamp)
       log.warn(`Found saved checkpoint from: ${formattedTimestamp}`)
-      const stepName = getStepName(savedState.step)
       if (stepName !== 'Unknown') {
         log.info(`Last step: ${stepName}`)
       }
@@ -102,15 +101,20 @@ export async function resolveCheckpointAndProvider(
 
       const isFinished = savedState.step >= STEP.CLEANUP
       if (isFinished) {
-        log.info('Checkpoint already complete — starting fresh...')
+        log.info('Saved workflow is already complete; starting a new workflow.')
         resumeChoice = 'fresh'
       } else {
         const choices = [
           { label: 'Resume from checkpoint', value: 'resume' },
           { label: 'Start fresh (discard checkpoint)', value: 'fresh' },
-          { label: 'Cancel', value: 'cancel' },
+          { label: 'Cancel and keep the checkpoint', value: 'cancel' },
         ]
-        resumeChoice = await select('What would you like to do?', choices)
+        const checkpointLabel =
+          stepName === 'Unknown' ? 'Saved workflow found' : `Saved workflow found at ${stepName}`
+        resumeChoice = await select(
+          `${checkpointLabel}. Resume it, start over, or cancel?`,
+          choices
+        )
       }
     }
 
@@ -148,30 +152,25 @@ export async function resolveCheckpointAndProvider(
 
       if (savedState.aiProvider) {
         aiProvider = savedState.aiProvider
-        copilotModel = savedState.copilotModel
         openrouterModel = savedState.openrouterModel
         geminiModel = savedState.geminiModel
         groqModel = savedState.groqModel
         codexModel = savedState.codexModel
+        opencodeModel = savedState.opencodeModel
       } else {
         const aiSelection = await handleAIProviderSelection()
         aiProvider = aiSelection.aiProvider
-        copilotModel = aiSelection.copilotModel
         openrouterModel = aiSelection.openrouterModel
         geminiModel = aiSelection.geminiModel
         groqModel = aiSelection.groqModel
         codexModel = aiSelection.codexModel
+        opencodeModel = aiSelection.opencodeModel
       }
 
       const gitUtils = await import('../utils/git-ai.js')
       const providerShort = gitUtils.getAIProviderShortName(aiProvider)
       let modelToShow: string | undefined
       switch (aiProvider) {
-        case 'copilot': {
-          modelToShow = copilotModel
-
-          break
-        }
         case 'openrouter': {
           modelToShow = openrouterModel
 
@@ -184,6 +183,11 @@ export async function resolveCheckpointAndProvider(
         }
         case 'codex': {
           modelToShow = codexModel
+
+          break
+        }
+        case 'opencode-zen': {
+          modelToShow = opencodeModel
 
           break
         }
@@ -245,19 +249,19 @@ export async function resolveCheckpointAndProvider(
 
       if (savedState.aiProvider) {
         aiProvider = savedState.aiProvider
-        copilotModel = savedState.copilotModel
         openrouterModel = savedState.openrouterModel
         geminiModel = savedState.geminiModel
         groqModel = savedState.groqModel
         codexModel = savedState.codexModel
+        opencodeModel = savedState.opencodeModel
       } else {
         const aiSelection = await handleAIProviderSelection()
         aiProvider = aiSelection.aiProvider
-        copilotModel = aiSelection.copilotModel
         openrouterModel = aiSelection.openrouterModel
         geminiModel = aiSelection.geminiModel
         groqModel = aiSelection.groqModel
         codexModel = aiSelection.codexModel
+        opencodeModel = aiSelection.opencodeModel
       }
 
       displayCurrentProviderStatus()
@@ -267,21 +271,21 @@ export async function resolveCheckpointAndProvider(
   } else {
     const aiSelection = await handleAIProviderSelection()
     aiProvider = aiSelection.aiProvider
-    copilotModel = aiSelection.copilotModel
     openrouterModel = aiSelection.openrouterModel
     geminiModel = aiSelection.geminiModel
     groqModel = aiSelection.groqModel
     codexModel = aiSelection.codexModel
+    opencodeModel = aiSelection.opencodeModel
     displayCurrentProviderStatus()
   }
 
   return {
     aiProvider,
-    copilotModel,
     openrouterModel,
     geminiModel,
     groqModel,
     codexModel,
+    opencodeModel,
     shouldResume,
     suppressStagingDoneMessage,
     savedState,
@@ -328,7 +332,7 @@ export async function setupTaskPlatform(opts: MainOpts | undefined): Promise<voi
           if (trelloSetupSuccess) {
             log.success('Trello integration configured!')
           } else {
-            log.warn('Trello setup failed or cancelled.')
+            log.warn('Trello setup was not completed. Run `geeto --setup-trello` to try again.')
           }
           console.log('')
         }
@@ -376,11 +380,11 @@ export async function handleStagingStep(
           log.info('Auto-staging all changes (from CLI flag)')
         }
       } else {
-        stageChoice = (await select('What to stage?', [
-          { label: 'Stage all changes', value: 'all' },
-          { label: 'Select files to stage', value: 'select' },
-          { label: 'Already staged', value: 'skip' },
-          { label: 'Cancel', value: 'cancel' },
+        stageChoice = (await select('Choose changes to stage for this workflow:', [
+          { label: 'Stage all current changes', value: 'all' },
+          { label: 'Select specific files to stage', value: 'select' },
+          { label: 'Use changes already staged', value: 'skip' },
+          { label: 'Cancel workflow', value: 'cancel' },
         ])) as 'all' | 'select' | 'skip' | 'cancel'
       }
 

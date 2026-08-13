@@ -3,7 +3,6 @@
  */
 
 import { writeFileSync } from 'node:fs'
-import type { CopilotModel } from '../api/copilot.js'
 import type { GeminiModel } from '../api/gemini.js'
 import type { OpenRouterModel } from '../api/openrouter.js'
 
@@ -98,10 +97,10 @@ export const handleSyncReleases = async (): Promise<void> => {
   }
 
   console.log('')
-  const action = await select('What do you want to do?', [
+  const action = await select(`Choose how to create missing ${platformName} releases:`, [
     { label: 'Create releases for all missing tags', value: 'all' },
     { label: 'Select which tags to release', value: 'select' },
-    { label: 'Cancel', value: 'cancel' },
+    { label: 'Cancel release creation', value: 'cancel' },
   ])
 
   if (action === 'cancel') return
@@ -111,7 +110,7 @@ export const handleSyncReleases = async (): Promise<void> => {
   if (action === 'select') {
     const { multiSelect } = await import('../cli/menu.js')
     const choices = missingTags.map((t) => ({ label: t, value: t }))
-    const selected = await multiSelect('Select tags to create releases for:', choices)
+    const selected = await multiSelect('Select tags that should get releases:', choices)
     if (selected.length === 0) {
       log.info('No tags selected.')
       return
@@ -129,12 +128,12 @@ export const handleSyncReleases = async (): Promise<void> => {
   // AI setup if needed
   let useAI = notesMode === 'ai'
   let language: 'en' | 'id' = 'en'
-  let aiProvider: 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'codex' = 'copilot'
-  let copilotModel: CopilotModel | undefined
+  let aiProvider: 'gemini' | 'openrouter' | 'groq' | 'codex' | 'opencode-zen' = 'gemini'
   let openrouterModel: OpenRouterModel | undefined
   let geminiModel: GeminiModel | undefined
   let groqModel: string | undefined
   let codexModel: string | undefined
+  let opencodeModel: string | undefined
 
   if (useAI) {
     language = (await select('Release notes language:', [
@@ -147,28 +146,28 @@ export const handleSyncReleases = async (): Promise<void> => {
     const configuredProvider = getConfiguredAIProvider(savedState)
     if (
       configuredProvider &&
-      (savedState?.copilotModel ||
-        savedState?.openrouterModel ||
+      (savedState?.openrouterModel ||
         savedState?.geminiModel ||
         savedState?.groqModel ||
-        savedState?.codexModel)
+        savedState?.codexModel ||
+        savedState?.opencodeModel)
     ) {
       aiProvider = configuredProvider
-      copilotModel = savedState.copilotModel
       openrouterModel = savedState.openrouterModel
       geminiModel = savedState.geminiModel
       groqModel = savedState.groqModel
       codexModel = savedState.codexModel
+      opencodeModel = savedState.opencodeModel
     } else {
       let providerChosen = false
       while (!providerChosen) {
         aiProvider = (await select('Choose AI Provider:', [
-          { label: 'GitHub Copilot', value: 'copilot' },
           { label: 'Gemini', value: 'gemini' },
           { label: 'OpenRouter', value: 'openrouter' },
           { label: 'Groq', value: 'groq' },
-          { label: 'Codex', value: 'codex' },
-        ])) as 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'codex'
+          { label: 'OpenAI Codex', value: 'codex' },
+          { label: 'OpenCode Zen', value: 'opencode-zen' },
+        ])) as 'gemini' | 'openrouter' | 'groq' | 'codex' | 'opencode-zen'
 
         const chosen = await chooseModelForProvider(
           aiProvider,
@@ -182,10 +181,6 @@ export const handleSyncReleases = async (): Promise<void> => {
             geminiModel = chosen as GeminiModel
             break
           }
-          case 'copilot': {
-            copilotModel = chosen as CopilotModel
-            break
-          }
           case 'openrouter': {
             openrouterModel = chosen as OpenRouterModel
             break
@@ -196,6 +191,10 @@ export const handleSyncReleases = async (): Promise<void> => {
           }
           case 'codex': {
             codexModel = chosen
+            break
+          }
+          case 'opencode-zen': {
+            opencodeModel = chosen
             break
           }
         }
@@ -241,14 +240,14 @@ export const handleSyncReleases = async (): Promise<void> => {
       console.log('')
       const aiSpinner = new ScrambleProgress()
       const currentModel =
-        aiProvider === 'copilot'
-          ? copilotModel
-          : aiProvider === 'openrouter'
-            ? openrouterModel
-            : aiProvider === 'groq'
-              ? groqModel
-              : aiProvider === 'codex'
-                ? codexModel
+        aiProvider === 'openrouter'
+          ? openrouterModel
+          : aiProvider === 'groq'
+            ? groqModel
+            : aiProvider === 'codex'
+              ? codexModel
+              : aiProvider === 'opencode-zen'
+                ? opencodeModel
                 : geminiModel
       const modelDisplay = getModelValue(currentModel)
       aiSpinner.start([
@@ -260,11 +259,12 @@ export const handleSyncReleases = async (): Promise<void> => {
         commitList,
         language,
         undefined,
-        copilotModel,
+        undefined,
         openrouterModel,
         geminiModel,
         groqModel,
-        codexModel
+        codexModel,
+        opencodeModel
       )
 
       if (aiResult) {
@@ -421,7 +421,9 @@ export const handleDeleteReleases = async (): Promise<void> => {
   }
 
   console.log('')
-  const alsoDeleteTag = confirm('Also delete the associated git tags?')
+  const alsoDeleteTag = confirm(
+    'Also delete the associated local and remote git tags? This cannot be undone through Geeto.'
+  )
 
   console.log('')
   const proceed = confirm(

@@ -121,7 +121,7 @@ jobs:
           mkdir -p /tmp/bins
           for bin in geeto-mac geeto-mac-arm64 geeto-linux geeto-linux-arm64; do
             echo "Downloading ${bin}..."
-            gh release download "${TAG}" -p "${bin}" -R rust142/geeto -D /tmp/bins
+            gh release download "${TAG}" -p "${bin}" -R IDNCraft/geeto -D /tmp/bins
           done
 
           MAC_X64_SHA=$(sha256sum /tmp/bins/geeto-mac | awk '{print $1}')
@@ -139,7 +139,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
         run: |
-          git clone "https://x-access-token:${GH_TOKEN}@github.com/rust142/homebrew-geeto.git" tap
+          git clone "https://x-access-token:${GH_TOKEN}@github.com/IDNCraft/homebrew-geeto.git" tap
           cd tap
           mkdir -p Formula
 
@@ -149,20 +149,20 @@ jobs:
 
           class Geeto < Formula
             desc "AI-powered Git workflow automation CLI"
-            homepage "https://github.com/rust142/geeto"
+            homepage "https://github.com/IDNCraft/geeto"
             version "${VERSION}"
             license "MIT"
 
             on_macos do
               if Hardware::CPU.intel?
-                url "https://github.com/rust142/geeto/releases/download/v${VERSION}/geeto-mac"
+                url "https://github.com/IDNCraft/geeto/releases/download/v${VERSION}/geeto-mac"
                 sha256 "${MAC_X64_SHA}"
 
                 def install
                   bin.install "geeto-mac" => "geeto"
                 end
               elsif Hardware::CPU.arm?
-                url "https://github.com/rust142/geeto/releases/download/v${VERSION}/geeto-mac-arm64"
+                url "https://github.com/IDNCraft/geeto/releases/download/v${VERSION}/geeto-mac-arm64"
                 sha256 "${MAC_ARM_SHA}"
 
                 def install
@@ -173,14 +173,14 @@ jobs:
 
             on_linux do
               if Hardware::CPU.intel?
-                url "https://github.com/rust142/geeto/releases/download/v${VERSION}/geeto-linux"
+                url "https://github.com/IDNCraft/geeto/releases/download/v${VERSION}/geeto-linux"
                 sha256 "${LINUX_X64_SHA}"
 
                 def install
                   bin.install "geeto-linux" => "geeto"
                 end
               elsif Hardware::CPU.arm?
-                url "https://github.com/rust142/geeto/releases/download/v${VERSION}/geeto-linux-arm64"
+                url "https://github.com/IDNCraft/geeto/releases/download/v${VERSION}/geeto-linux-arm64"
                 sha256 "${LINUX_ARM_SHA}"
 
                 def install

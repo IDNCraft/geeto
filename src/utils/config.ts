@@ -273,6 +273,33 @@ export const getGroqConfig = (): { apiKey: string } => {
 
 export const hasGroqConfig = (): boolean => !!getGroqConfig().apiKey
 
+export const getOpenCodeZenConfigPath = (): string =>
+  path.join(GLOBAL_GEETO_DIR, 'opencode-zen.toml')
+
+export const isOpenCodeZenApiKeyValidated = (): boolean => {
+  try {
+    const configPath = getOpenCodeZenConfigPath()
+    if (!fs.existsSync(configPath)) return false
+    return /api_key_validated\s*=\s*true/.test(fs.readFileSync(configPath, 'utf8'))
+  } catch {
+    return false
+  }
+}
+
+export const setOpenCodeZenApiKeyValidated = (validated: boolean): void => {
+  try {
+    if (!fs.existsSync(GLOBAL_GEETO_DIR)) fs.mkdirSync(GLOBAL_GEETO_DIR, { recursive: true })
+    fs.writeFileSync(
+      getOpenCodeZenConfigPath(),
+      `# OpenCode Zen access state\napi_key_validated = ${validated ? 'true' : 'false'}\n`,
+      'utf8'
+    )
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : String(error)
+    log.warn(`Failed to save OpenCode Zen access state: ${msg}`)
+  }
+}
+
 export const getCodexConfigPath = (): string => '.geeto/codex.toml'
 
 export const hasCodexConfig = (): boolean => {

@@ -72,10 +72,10 @@ export const handleRecoverTags = async (): Promise<void> => {
   }
 
   console.log('')
-  const action = await select('What do you want to do?', [
+  const action = await select('Choose how to recreate missing tags:', [
     { label: 'Recover all missing tags', value: 'all' },
     { label: 'Select which tags to recover', value: 'select' },
-    { label: 'Cancel', value: 'cancel' },
+    { label: 'Cancel tag recovery', value: 'cancel' },
   ])
 
   if (action === 'cancel') return
@@ -88,7 +88,7 @@ export const handleRecoverTags = async (): Promise<void> => {
       label: `${mt.tag} (${mt.hash.slice(0, 7)})`,
       value: mt.tag,
     }))
-    const selected = await multiSelect('Select tags to recover:', choices)
+    const selected = await multiSelect('Select tags to recreate:', choices)
     if (selected.length === 0) {
       log.info('No tags selected.')
       return

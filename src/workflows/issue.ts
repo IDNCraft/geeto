@@ -3,7 +3,6 @@
  * Interactive issue creation from CLI
  */
 
-import type { CopilotModel } from '../api/copilot.js'
 import type { GeminiModel } from '../api/gemini.js'
 import type { OpenRouterModel } from '../api/openrouter.js'
 
@@ -29,7 +28,7 @@ import { loadState } from '../utils/state.js'
  */
 const callAIForIssue = async (
   description: string,
-  provider: 'copilot' | 'gemini' | 'openrouter' | 'groq' | 'codex',
+  provider: 'gemini' | 'openrouter' | 'groq' | 'codex' | 'opencode-zen',
   model: string | undefined,
   correction?: string
 ): Promise<{ title: string; body: string } | null> => {
@@ -48,9 +47,10 @@ const callAIForIssue = async (
     result = await generateTextWithProvider(
       provider,
       prompt,
-      model as CopilotModel,
+      undefined,
       model as OpenRouterModel,
       (model as GeminiModel) ?? 'gemini-2.5-flash',
+      model,
       model,
       model
     )
@@ -126,7 +126,12 @@ export const handleCreateIssue = async (): Promise<void> => {
     let aiDone = false
 
     while (!aiDone) {
-      const aiResult = await callAIForIssue(description, aiProvider, currentModel, correction)
+      const aiResult = await callAIForIssue(
+        description,
+        aiProvider ?? 'gemini',
+        currentModel,
+        correction
+      )
 
       if (!aiResult) {
         log.warn('AI failed. Falling back to manual.')
@@ -138,14 +143,14 @@ export const handleCreateIssue = async (): Promise<void> => {
       body = aiResult.body
       showAIPreview('Issue', title, body)
 
-      const action = await select('Accept this issue content?', [
-        { label: 'Yes, use it', value: 'accept' },
-        { label: 'Regenerate', value: 'regenerate' },
-        { label: 'Correct AI (give feedback)', value: 'correct' },
-        { label: 'Edit inline', value: 'edit' },
-        { label: 'Change model', value: 'change-model' },
-        { label: 'Change AI provider', value: 'change-provider' },
-        { label: 'Discard & enter manually', value: 'discard' },
+      const action = await select('Choose what to do with this issue:', [
+        { label: 'Use this issue content', value: 'accept' },
+        { label: 'Generate a new issue draft', value: 'regenerate' },
+        { label: 'Give AI feedback', value: 'correct' },
+        { label: 'Edit the issue manually', value: 'edit' },
+        { label: 'Switch model', value: 'change-model' },
+        { label: 'Switch AI provider', value: 'change-provider' },
+        { label: 'Discard draft and enter manually', value: 'discard' },
       ])
 
       switch (action) {
@@ -174,10 +179,14 @@ export const handleCreateIssue = async (): Promise<void> => {
         }
         case 'change-model': {
           const { chooseModelForProvider } = await import('../utils/git-ai.js')
-          const chosen = await chooseModelForProvider(aiProvider, 'Choose model:', 'Back')
+          const chosen = await chooseModelForProvider(
+            aiProvider ?? 'gemini',
+            'Choose model:',
+            'Keep current model'
+          )
           if (chosen && chosen !== 'back') {
             currentModel = chosen
-            updateModelInState(state, aiProvider, chosen)
+            updateModelInState(state, aiProvider ?? 'gemini', chosen)
           }
           correction = ''
           continue
@@ -185,20 +194,21 @@ export const handleCreateIssue = async (): Promise<void> => {
         case 'change-provider': {
           const prov = await select('Choose AI provider:', [
             { label: 'Gemini', value: 'gemini' },
-            { label: 'GitHub Copilot', value: 'copilot' },
             { label: 'OpenRouter', value: 'openrouter' },
             { label: 'Groq', value: 'groq' },
-            { label: 'Back', value: 'back' },
+            { label: 'OpenAI Codex', value: 'codex' },
+            { label: 'OpenCode Zen', value: 'opencode-zen' },
+            { label: 'Keep current provider', value: 'back' },
           ])
           if (prov !== 'back') {
             const { chooseModelForProvider } = await import('../utils/git-ai.js')
             const chosen = await chooseModelForProvider(
-              prov as 'gemini' | 'copilot' | 'openrouter' | 'groq',
+              prov as 'gemini' | 'openrouter' | 'groq' | 'codex' | 'opencode-zen',
               'Choose model:',
-              'Back'
+              'Keep current model'
             )
             if (chosen && chosen !== 'back') {
-              aiProvider = prov as 'copilot' | 'gemini' | 'openrouter' | 'groq'
+              aiProvider = prov as 'gemini' | 'openrouter' | 'groq' | 'codex' | 'opencode-zen'
               currentModel = chosen
               if (state) {
                 state.aiProvider = aiProvider

@@ -46,19 +46,19 @@ export const handleFetch = async (): Promise<void> => {
   }
 
   // Choose what to fetch
-  const mode = await select('Fetch mode:', [
+  const mode = await select('Choose fetch scope:', [
     {
-      label: `All remotes  ${GR}(--all)${R}`,
+      label: `Fetch all remotes  ${GR}(--all)${R}`,
       value: 'all',
     },
     {
-      label: `All + prune stale  ${GR}(--all --prune)${R}`,
+      label: `Fetch all and prune stale refs  ${GR}(--all --prune)${R}`,
       value: 'all-prune',
     },
     ...(remotes.length > 1
       ? [
           {
-            label: `Specific remote`,
+            label: 'Fetch one remote only',
             value: 'pick',
           },
         ]
@@ -69,7 +69,7 @@ export const handleFetch = async (): Promise<void> => {
 
   if (mode === 'pick') {
     const remote = await select(
-      'Fetch from which remote?',
+      'Which remote should be fetched?',
       remotes.map((r) => ({ label: r, value: r }))
     )
     fetchCmd = `git fetch ${remote}`

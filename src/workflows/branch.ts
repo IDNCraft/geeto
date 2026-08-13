@@ -2,7 +2,6 @@
  * Branch creation workflow - handles AI-powered branch naming
  */
 
-import type { CopilotModel } from '../api/copilot.js'
 import type { GeminiModel } from '../api/gemini.js'
 import type { OpenRouterModel } from '../api/openrouter.js'
 import type { GeetoState } from '../types/index.js'
@@ -48,7 +47,7 @@ export const handleBranchCreationWorkflow = async (
     createNewBranch = true
   } else {
     console.log('')
-    createNewBranch = confirm('Create new branch?')
+    createNewBranch = confirm(`Create a new branch from '${state.currentBranch}'?`)
   }
 
   // Initialize variables that need to be accessible throughout the function
@@ -75,14 +74,17 @@ export const handleBranchCreationWorkflow = async (
             ` Branch will use '${defaultPrefix}' prefix.`
         )
         console.log('')
-        const choice = await select('How do you want to proceed?', [
-          { label: 'Continue (just this once)', value: 'once' },
-          {
-            label: `Always allow branching from '${state.currentBranch}'`,
-            value: 'allow',
-          },
-          { label: 'Cancel', value: 'cancel' },
-        ])
+        const choice = await select(
+          'This branch is not a standard development base. Choose how to continue:',
+          [
+            { label: 'Continue (just this once)', value: 'once' },
+            {
+              label: `Always allow branching from '${state.currentBranch}'`,
+              value: 'allow',
+            },
+            { label: 'Cancel branch creation', value: 'cancel' },
+          ]
+        )
 
         if (choice === 'cancel') {
           return { branchName: state.currentBranch, created: false }
@@ -201,9 +203,9 @@ export const handleBranchCreationWorkflow = async (
       if (!branchMenuShown) {
         while (!branchMenuShown) {
           const branchChoices = [
-            { label: 'Generate with AI', value: 'ai' },
-            { label: 'Enter custom name', value: 'custom' },
-            { label: 'Cancel', value: 'cancel' },
+            { label: 'Generate branch name with AI', value: 'ai' },
+            { label: 'Enter branch name manually', value: 'custom' },
+            { label: 'Cancel branch creation', value: 'cancel' },
           ]
           if (hasTrelloConfig() || !hasSkippedTrelloPrompt()) {
             branchChoices.unshift({ label: 'Link to Trello Card', value: 'trello' })
@@ -246,18 +248,18 @@ export const handleBranchCreationWorkflow = async (
             }
             case 'ai': {
               // Use AI branch naming
-              let selectedModel: CopilotModel | OpenRouterModel | GeminiModel | string | undefined
-              let providerToUse: 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'codex'
+              let selectedModel: OpenRouterModel | GeminiModel | string | undefined
+              let providerToUse: 'gemini' | 'openrouter' | 'groq' | 'codex' | 'opencode-zen'
               // If user previously chose manual, ask which AI provider to use now
               if (getConfiguredAIProvider(state)) {
                 providerToUse = getConfiguredAIProvider(state) ?? 'gemini'
               } else {
                 const prov = await select('Choose AI provider for branch generation:', [
                   { label: 'Gemini', value: 'gemini' },
-                  { label: 'GitHub Copilot', value: 'copilot' },
                   { label: 'OpenRouter', value: 'openrouter' },
                   { label: 'Groq', value: 'groq' },
-                  { label: 'Codex', value: 'codex' },
+                  { label: 'OpenAI Codex', value: 'codex' },
+                  { label: 'OpenCode Zen', value: 'opencode-zen' },
                   { label: 'Back to suggested branch selection', value: 'cancel-prov' },
                 ])
 
@@ -266,7 +268,7 @@ export const handleBranchCreationWorkflow = async (
                   continue
                 }
 
-                providerToUse = prov as 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'codex'
+                providerToUse = prov as 'gemini' | 'openrouter' | 'groq' | 'codex' | 'opencode-zen'
 
                 // Ensure provider is ready (skip check for manual since user chose an AI provider)
                 const { ensureAIProvider } = await import('../core/setup.js')
@@ -283,10 +285,6 @@ export const handleBranchCreationWorkflow = async (
               state.aiProvider = providerToUse
               saveState(state)
               switch (providerToUse) {
-                case 'copilot': {
-                  selectedModel = state.copilotModel
-                  break
-                }
                 case 'openrouter': {
                   selectedModel = state.openrouterModel
                   break
@@ -303,6 +301,10 @@ export const handleBranchCreationWorkflow = async (
                   selectedModel = state.codexModel
                   break
                 }
+                case 'opencode-zen': {
+                  selectedModel = state.opencodeModel
+                  break
+                }
                 // No default
               }
 
@@ -316,16 +318,11 @@ export const handleBranchCreationWorkflow = async (
                 providerToUse,
                 selectedModel,
                 (
-                  provider: 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'codex',
+                  provider: 'gemini' | 'openrouter' | 'groq' | 'codex' | 'opencode-zen',
                   model?: string
                 ) => {
                   state.aiProvider = provider
                   switch (provider) {
-                    case 'copilot': {
-                      state.copilotModel = model as CopilotModel
-                      state.codexModel = undefined
-                      break
-                    }
                     case 'openrouter': {
                       state.openrouterModel = model as OpenRouterModel
                       state.codexModel = undefined
@@ -343,6 +340,10 @@ export const handleBranchCreationWorkflow = async (
                     }
                     case 'codex': {
                       state.codexModel = model
+                      break
+                    }
+                    case 'opencode-zen': {
+                      state.opencodeModel = model
                       break
                     }
                     // No default
@@ -384,11 +385,14 @@ export const handleBranchCreationWorkflow = async (
                   console.log('')
                   displayChangedFiles(getChangedFilesWithStatus())
 
-                  const stageChoice = (await select('What to stage?', [
-                    { label: 'Stage all changes', value: 'all' },
-                    { label: 'Already staged', value: 'skip' },
-                    { label: 'Cancel', value: 'cancel' },
-                  ])) as 'all' | 'skip' | 'cancel'
+                  const stageChoice = (await select(
+                    'Choose changes to stage before generating a branch name:',
+                    [
+                      { label: 'Stage all current changes', value: 'all' },
+                      { label: 'Use changes already staged', value: 'skip' },
+                      { label: 'Cancel branch-name generation', value: 'cancel' },
+                    ]
+                  )) as 'all' | 'skip' | 'cancel'
 
                   switch (stageChoice) {
                     case 'all': {
@@ -425,16 +429,11 @@ export const handleBranchCreationWorkflow = async (
                   correction,
                   state.currentBranch,
                   (
-                    provider: 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'codex',
+                    provider: 'gemini' | 'openrouter' | 'groq' | 'codex' | 'opencode-zen',
                     model?: string
                   ) => {
                     state.aiProvider = provider
                     switch (provider) {
-                      case 'copilot': {
-                        state.copilotModel = model as CopilotModel
-                        state.codexModel = undefined
-                        break
-                      }
                       case 'openrouter': {
                         state.openrouterModel = model as OpenRouterModel
                         state.codexModel = undefined
@@ -498,7 +497,7 @@ export const handleBranchCreationWorkflow = async (
                     // If creation failed because branch exists, offer explicit actions
                     const { select: dynamicSelect } = await import('../cli/menu.js')
                     const choice = await dynamicSelect(
-                      `Branch '${workingBranch}' already exists. What would you like to do?`,
+                      `Branch '${workingBranch}' already exists. Choose how to continue:`,
                       [
                         { label: 'Regenerate branch name', value: 'regenerate' },
                         { label: 'Change model', value: 'change-model' },
@@ -517,23 +516,6 @@ export const handleBranchCreationWorkflow = async (
                       case 'change-model': {
                         const currentProv = getConfiguredAIProvider(state) ?? 'gemini'
                         switch (currentProv) {
-                          case 'copilot': {
-                            const cop = await import('../api/copilot.js')
-                            const models = await cop.getCopilotModels()
-                            const copOptions = models.some((m) => m.value === 'back')
-                              ? models
-                              : [
-                                  ...models,
-                                  { label: 'Back to suggested branch selection', value: 'back' },
-                                ]
-                            const chosen = await select('Choose GitHub Copilot model:', copOptions)
-                            if (chosen === 'back') {
-                              continue
-                            }
-                            state.copilotModel = chosen as unknown as CopilotModel
-
-                            break
-                          }
                           case 'openrouter': {
                             const or = await import('../api/openrouter.js')
                             const models = await or.getOpenRouterModels()
@@ -577,7 +559,7 @@ export const handleBranchCreationWorkflow = async (
                                   ...models,
                                   { label: 'Back to suggested branch selection', value: 'back' },
                                 ]
-                            const chosen = await select('Choose Codex model:', codexOptions)
+                            const chosen = await select('Choose OpenAI Codex model:', codexOptions)
                             if (chosen === 'back') {
                               continue
                             }
@@ -612,10 +594,10 @@ export const handleBranchCreationWorkflow = async (
                       case 'change-provider': {
                         const prov = await select('Choose AI provider:', [
                           { label: 'Gemini', value: 'gemini' },
-                          { label: 'GitHub Copilot', value: 'copilot' },
                           { label: 'OpenRouter', value: 'openrouter' },
                           { label: 'Groq', value: 'groq' },
-                          { label: 'Codex', value: 'codex' },
+                          { label: 'OpenAI Codex', value: 'codex' },
+                          { label: 'OpenCode Zen', value: 'opencode-zen' },
                           { label: 'Back to suggested branch selection', value: 'cancel-prov' },
                         ])
                         if (prov === 'cancel-prov') {
@@ -627,7 +609,7 @@ export const handleBranchCreationWorkflow = async (
                         // Use centralized helper to choose model for the provider
                         const { chooseModelForProvider } = await import('../utils/git-ai.js')
                         const chosen = await chooseModelForProvider(
-                          prov as 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'codex',
+                          prov as 'gemini' | 'openrouter' | 'groq' | 'codex' | 'opencode-zen',
                           'Choose model:',
                           'Back to suggested branch selection'
                         )
@@ -642,22 +624,13 @@ export const handleBranchCreationWorkflow = async (
 
                         state.aiProvider = prov as
                           | 'gemini'
-                          | 'copilot'
                           | 'openrouter'
                           | 'groq'
                           | 'codex'
+                          | 'opencode-zen'
                         switch (prov) {
-                          case 'copilot': {
-                            state.copilotModel = chosen as unknown as CopilotModel
-                            state.openrouterModel = undefined
-                            state.geminiModel = undefined
-                            state.groqModel = undefined
-                            state.codexModel = undefined
-                            break
-                          }
                           case 'openrouter': {
                             state.openrouterModel = chosen as unknown as OpenRouterModel
-                            state.copilotModel = undefined
                             state.geminiModel = undefined
                             state.groqModel = undefined
                             state.codexModel = undefined
@@ -665,7 +638,6 @@ export const handleBranchCreationWorkflow = async (
                           }
                           case 'gemini': {
                             state.geminiModel = chosen as unknown as GeminiModel
-                            state.copilotModel = undefined
                             state.openrouterModel = undefined
                             state.groqModel = undefined
                             state.codexModel = undefined
@@ -673,7 +645,6 @@ export const handleBranchCreationWorkflow = async (
                           }
                           case 'groq': {
                             state.groqModel = chosen
-                            state.copilotModel = undefined
                             state.openrouterModel = undefined
                             state.geminiModel = undefined
                             state.codexModel = undefined
@@ -681,10 +652,17 @@ export const handleBranchCreationWorkflow = async (
                           }
                           case 'codex': {
                             state.codexModel = chosen
-                            state.copilotModel = undefined
                             state.openrouterModel = undefined
                             state.geminiModel = undefined
                             state.groqModel = undefined
+                            break
+                          }
+                          case 'opencode-zen': {
+                            state.opencodeModel = chosen
+                            state.openrouterModel = undefined
+                            state.geminiModel = undefined
+                            state.groqModel = undefined
+                            state.codexModel = undefined
                             break
                           }
                         }
@@ -757,14 +735,11 @@ export const handleBranchCreationWorkflow = async (
     }
   } else {
     // User chose not to create a new branch — ask what to do next
-    const choice = await select(
-      'You chose not to create a new branch. What would you like to do?',
-      [
-        { label: 'Step 3: Commit', value: 'commit' },
-        { label: 'Step 5: Merge to Target Branch', value: 'merge' },
-        { label: 'Cancel', value: 'cancel' },
-      ]
-    )
+    const choice = await select('No new branch created. Choose the next workflow step:', [
+      { label: 'Step 3: Commit', value: 'commit' },
+      { label: 'Step 5: Merge to Target Branch', value: 'merge' },
+      { label: 'Cancel workflow', value: 'cancel' },
+    ])
 
     if (choice === 'cancel') {
       log.warn('Cancelled.')

@@ -20,21 +20,13 @@ export const setupOpenRouterConfigInteractive = (): boolean => {
     // fall through to interactive setup
   }
 
-  log.info('OpenRouter integration is not configured for this project.\n')
+  log.info('Use OpenRouter to access multiple AI providers with one API key.')
+  log.info('Free and paid models are available; limits depend on your OpenRouter account.')
+  log.info('Choose from available models during a workflow; Geeto remembers your selection.')
+  log.info('Your API key will be saved to ~/.geeto/openrouter.toml and reused across projects.')
+  log.info('Get a key from: https://openrouter.ai/keys\n')
 
-  log.info('OpenRouter provides access to various AI models through a single API key.')
-  log.info('Some models are free, while others may require credits from your OpenRouter account.')
-  log.info(
-    'Note: Even models marked as "free" may require account verification or limited credits.'
-  )
-  log.info('Supported models include: Llama, Mistral, Gemma, WizardLM, and many more.')
-  log.info('You need an OpenRouter API key to use this service.')
-  log.info('Visit https://openrouter.ai/ to create an account and get your API key.\n')
-  log.info(
-    'The OpenRouter API key will be saved to .geeto/openrouter.toml (or ~/.geeto/ globally).'
-  )
-
-  const shouldSetup = confirm('Setup OpenRouter integration now?')
+  const shouldSetup = confirm('Connect OpenRouter now?')
   if (!shouldSetup) return false
 
   const openKeyPage = confirm('Open OpenRouter API key page in your browser?')
@@ -51,7 +43,9 @@ export const setupOpenRouterConfigInteractive = (): boolean => {
 
   const openrouterKey = askQuestion('Enter OpenRouter API Key: ').trim()
   if (!openrouterKey) {
-    log.warn('No API key provided. OpenRouter setup cancelled.')
+    log.warn(
+      'No API key entered; OpenRouter setup was not saved. Run `geeto --setup-openrouter` to try again.'
+    )
     return false
   }
 

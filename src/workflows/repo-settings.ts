@@ -4,7 +4,6 @@
  */
 
 import { readFileSync } from 'node:fs'
-import type { CopilotModel } from '../api/copilot.js'
 import type { GeminiModel } from '../api/gemini.js'
 import type { OpenRouterModel } from '../api/openrouter.js'
 
@@ -163,12 +162,12 @@ export const handleRepoSettings = async (): Promise<void> => {
 
   // Main menu
   console.log('')
-  const action = await select('What do you want to update?', [
+  const action = await select('Choose repository settings to update:', [
     { label: 'Update description (AI from README)', value: 'description' },
     { label: 'Update topics from README + package.json', value: 'topics' },
     { label: 'Update homepage URL', value: 'homepage' },
-    { label: 'Update all', value: 'all' },
-    { label: 'Cancel', value: 'cancel' },
+    { label: 'Update description, topics, and homepage', value: 'all' },
+    { label: 'Cancel repository update', value: 'cancel' },
   ])
 
   if (action === 'cancel') return
@@ -180,40 +179,40 @@ export const handleRepoSettings = async (): Promise<void> => {
     const readme = readReadme()
     if (readme) {
       // AI provider setup
-      let aiProvider: 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'codex' = 'copilot'
-      let copilotModel: CopilotModel | undefined
+      let aiProvider: 'gemini' | 'openrouter' | 'groq' | 'codex' | 'opencode-zen' = 'gemini'
       let openrouterModel: OpenRouterModel | undefined
       let geminiModel: GeminiModel | undefined
       let groqModel: string | undefined
       let codexModel: string | undefined
+      let opencodeModel: string | undefined
 
       const savedState = loadState()
       const configuredProvider = getConfiguredAIProvider(savedState)
       if (
         configuredProvider &&
-        (savedState?.copilotModel ||
-          savedState?.openrouterModel ||
+        (savedState?.openrouterModel ||
           savedState?.geminiModel ||
           savedState?.groqModel ||
-          savedState?.codexModel)
+          savedState?.codexModel ||
+          savedState?.opencodeModel)
       ) {
         aiProvider = configuredProvider
-        copilotModel = savedState.copilotModel
         openrouterModel = savedState.openrouterModel
         geminiModel = savedState.geminiModel
         groqModel = savedState.groqModel
         codexModel = savedState.codexModel
+        opencodeModel = savedState.opencodeModel
       } else {
         let providerChosen = false
         while (!providerChosen) {
           console.log('')
           aiProvider = (await select('Choose AI Provider:', [
-            { label: 'GitHub Copilot', value: 'copilot' },
             { label: 'Gemini', value: 'gemini' },
             { label: 'OpenRouter', value: 'openrouter' },
             { label: 'Groq', value: 'groq' },
-            { label: 'Codex', value: 'codex' },
-          ])) as 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'codex'
+            { label: 'OpenAI Codex', value: 'codex' },
+            { label: 'OpenCode Zen', value: 'opencode-zen' },
+          ])) as 'gemini' | 'openrouter' | 'groq' | 'codex' | 'opencode-zen'
 
           const chosen = await chooseModelForProvider(
             aiProvider,
@@ -227,10 +226,6 @@ export const handleRepoSettings = async (): Promise<void> => {
               geminiModel = chosen as GeminiModel
               break
             }
-            case 'copilot': {
-              copilotModel = chosen as CopilotModel
-              break
-            }
             case 'openrouter': {
               openrouterModel = chosen as OpenRouterModel
               break
@@ -241,6 +236,10 @@ export const handleRepoSettings = async (): Promise<void> => {
             }
             case 'codex': {
               codexModel = chosen
+              break
+            }
+            case 'opencode-zen': {
+              opencodeModel = chosen
               break
             }
           }
@@ -259,14 +258,14 @@ export const handleRepoSettings = async (): Promise<void> => {
 
         console.log('')
         const currentModel =
-          aiProvider === 'copilot'
-            ? copilotModel
-            : aiProvider === 'openrouter'
-              ? openrouterModel
-              : aiProvider === 'groq'
-                ? groqModel
-                : aiProvider === 'codex'
-                  ? codexModel
+          aiProvider === 'openrouter'
+            ? openrouterModel
+            : aiProvider === 'groq'
+              ? groqModel
+              : aiProvider === 'codex'
+                ? codexModel
+                : aiProvider === 'opencode-zen'
+                  ? opencodeModel
                   : geminiModel
         const modelDisplay = getModelValue(currentModel)
         const aiSpinner = log.spinner()
@@ -279,11 +278,12 @@ export const handleRepoSettings = async (): Promise<void> => {
         const aiResult = await generateTextWithProvider(
           aiProvider,
           prompt,
-          copilotModel,
+          undefined,
           openrouterModel,
           geminiModel,
           groqModel,
-          codexModel
+          codexModel,
+          opencodeModel
         )
 
         if (!aiResult) {
@@ -300,13 +300,13 @@ export const handleRepoSettings = async (): Promise<void> => {
         log.info(`AI suggestion: ${colors.bright}${aiResult}${colors.reset}`)
 
         console.log('')
-        const choice = await select('Accept this description?', [
-          { label: 'Yes, use it', value: 'accept' },
-          { label: 'Regenerate', value: 'regenerate' },
-          { label: 'Correct AI (give feedback)', value: 'correct' },
-          { label: 'Edit manually', value: 'edit' },
-          { label: 'Change model', value: 'change-model' },
-          { label: 'Change AI provider', value: 'change-provider' },
+        const choice = await select('Choose what to do with this repository description:', [
+          { label: 'Use this repository description', value: 'accept' },
+          { label: 'Generate a new description', value: 'regenerate' },
+          { label: 'Give AI feedback', value: 'correct' },
+          { label: 'Edit the description manually', value: 'edit' },
+          { label: 'Switch model', value: 'change-model' },
+          { label: 'Switch AI provider', value: 'change-provider' },
         ])
 
         switch (choice) {
@@ -339,10 +339,6 @@ export const handleRepoSettings = async (): Promise<void> => {
                   geminiModel = newModel as GeminiModel
                   break
                 }
-                case 'copilot': {
-                  copilotModel = newModel as CopilotModel
-                  break
-                }
                 case 'openrouter': {
                   openrouterModel = newModel as OpenRouterModel
                   break
@@ -353,6 +349,10 @@ export const handleRepoSettings = async (): Promise<void> => {
                 }
                 case 'codex': {
                   codexModel = newModel
+                  break
+                }
+                case 'opencode-zen': {
+                  opencodeModel = newModel
                   break
                 }
               }
@@ -363,17 +363,16 @@ export const handleRepoSettings = async (): Promise<void> => {
           case 'change-provider': {
             console.log('')
             aiProvider = (await select('Choose AI Provider:', [
-              { label: 'GitHub Copilot', value: 'copilot' },
               { label: 'Gemini', value: 'gemini' },
               { label: 'OpenRouter', value: 'openrouter' },
               { label: 'Groq', value: 'groq' },
-              { label: 'Codex', value: 'codex' },
-            ])) as 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'codex'
+              { label: 'OpenAI Codex', value: 'codex' },
+              { label: 'OpenCode Zen', value: 'opencode-zen' },
+            ])) as 'gemini' | 'openrouter' | 'groq' | 'codex' | 'opencode-zen'
 
             const newModel = await chooseModelForProvider(aiProvider, undefined, 'Back')
             if (newModel && newModel !== 'back') {
               // Reset all models, set only the new one
-              copilotModel = undefined
               openrouterModel = undefined
               geminiModel = undefined
               groqModel = undefined
@@ -381,10 +380,6 @@ export const handleRepoSettings = async (): Promise<void> => {
               switch (aiProvider) {
                 case 'gemini': {
                   geminiModel = newModel as GeminiModel
-                  break
-                }
-                case 'copilot': {
-                  copilotModel = newModel as CopilotModel
                   break
                 }
                 case 'openrouter': {
@@ -397,6 +392,10 @@ export const handleRepoSettings = async (): Promise<void> => {
                 }
                 case 'codex': {
                   codexModel = newModel
+                  break
+                }
+                case 'opencode-zen': {
+                  opencodeModel = newModel
                   break
                 }
               }

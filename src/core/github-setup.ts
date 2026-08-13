@@ -39,13 +39,13 @@ export const setupGithubConfigInteractive = (): boolean => {
     // fall through to interactive setup
   }
 
-  log.info('GitHub integration is not configured for this project.\n')
+  log.info('Connect GitHub to create pull requests and issues from Geeto.\n')
 
-  log.info('To enable GitHub features (create PR, issues), you need:')
+  log.info('Use a Personal Access Token with repo scope, or an authenticated GitHub CLI.')
   log.info('  1. A Personal Access Token (PAT) with repo scope')
   log.info('  2. Or GitHub CLI (gh) already authenticated\n')
 
-  const shouldSetup = confirm('Setup GitHub integration now?')
+  const shouldSetup = confirm('Connect GitHub now?')
   if (!shouldSetup) {
     return false
   }

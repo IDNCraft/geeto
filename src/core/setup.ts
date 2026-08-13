@@ -17,29 +17,8 @@ export const ensureGemini = async (): Promise<boolean> => {
       return mod.setupGeminiConfigInteractive()
     }
   } catch {
-    log.warn('Gemini setup helper not available.')
+    log.warn('Gemini setup could not be loaded. Run `geeto --setup-gemini` again.')
   }
-  return false
-}
-
-/**
- * Check and setup Copilot CLI
- */
-export const ensureGitHubCopilot = async (): Promise<boolean> => {
-  try {
-    const mod = await import('./copilot-setup.js')
-    // Silent check first — skip setup flow if already configured
-    if (typeof mod.isCopilotReady === 'function' && (await mod.isCopilotReady())) {
-      return true
-    }
-    if (typeof mod.setupGitHubCopilotInteractive === 'function') {
-      return mod.setupGitHubCopilotInteractive()
-    }
-  } catch {
-    log.warn('Copilot setup helper not available.')
-  }
-
-  log.warn('Unable to run Copilot setup.')
   return false
 }
 
@@ -60,7 +39,7 @@ export const ensureOpenRouter = async (): Promise<boolean> => {
       return mod.setupOpenRouterConfigInteractive()
     }
   } catch {
-    log.warn('OpenRouter setup helper not available.')
+    log.warn('OpenRouter setup could not be loaded. Run `geeto --setup-openrouter` again.')
   }
   return false
 }
@@ -100,7 +79,7 @@ export const ensureGroq = async (): Promise<boolean> => {
       return mod.setupGroqConfigInteractive()
     }
   } catch {
-    log.warn('Groq setup helper not available.')
+    log.warn('Groq setup could not be loaded. Run `geeto --setup-groq` again.')
   }
   return false
 }
@@ -116,20 +95,30 @@ export const ensureCodex = async (): Promise<boolean> => {
       return mod.setupCodexConfigInteractive()
     }
   } catch {
-    log.warn('Codex setup helper not available.')
+    log.warn('OpenAI Codex setup helper not available.')
   }
   return false
 }
 
+export const ensureOpenCode = async (): Promise<boolean> => {
+  try {
+    const { isAvailable } = await import('../api/opencode.js')
+    if (isAvailable()) return true
+  } catch {
+    // fall through to the setup message
+  }
+
+  log.warn('OpenCode Zen is not available in PATH.')
+  log.info('Install it from https://opencode.ai/docs/installation/')
+  return false
+}
+
 export const ensureAIProvider = async (
-  aiProvider: 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'codex'
+  aiProvider: 'gemini' | 'openrouter' | 'groq' | 'codex' | 'opencode-zen'
 ): Promise<boolean> => {
   switch (aiProvider) {
     case 'gemini': {
       return ensureGemini()
-    }
-    case 'copilot': {
-      return ensureGitHubCopilot()
     }
     case 'openrouter': {
       return ensureOpenRouter()
@@ -139,6 +128,9 @@ export const ensureAIProvider = async (
     }
     case 'codex': {
       return ensureCodex()
+    }
+    case 'opencode-zen': {
+      return ensureOpenCode()
     }
     default: {
       log.error(`Unknown AI provider: ${aiProvider}`)

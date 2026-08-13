@@ -1,4 +1,3 @@
-import type { CopilotModel } from '../api/copilot.js'
 import type { GeminiModel } from '../api/gemini.js'
 import type { OpenRouterModel } from '../api/openrouter.js'
 import type { BranchStrategyConfig, GeetoState } from '../types/index.js'
@@ -57,7 +56,7 @@ export async function handleTrelloCase(
     const setupSuccess = setupTrelloConfigInteractive()
     spinner.stop()
     if (!setupSuccess) {
-      log.warn('Trello setup failed or cancelled.')
+      log.warn('Trello setup was not completed. Run `geeto --setup-trello` to try again.')
       return { branchFlowComplete: false, branchMenuShown: false }
     }
     log.success('Trello integration configured!')
@@ -105,7 +104,9 @@ export async function handleTrelloCase(
   cardSpinner.stop()
 
   if (trelloCards.length === 0) {
-    log.warn('No cards found in selected list')
+    log.warn(
+      'No cards found in the selected Trello list. Add a card or choose another list, then try again.'
+    )
     return { branchFlowComplete: false, branchMenuShown: false }
   }
 
@@ -131,7 +132,7 @@ export async function handleTrelloCase(
   log.success(`Linked to Trello card ${trelloCardId}`)
 
   // Naming strategy selection for the card
-  const namingChoice = await select('Branch naming strategy:', [
+  const namingChoice = await select('Choose how to build the branch name:', [
     { label: 'Use Trello title (full)', value: 'title-full' },
     { label: 'Use Trello title (AI shortened)', value: 'title-ai' },
     { label: 'Use Trello title (AI shortened + English)', value: 'title-ai-en' },
@@ -169,9 +170,10 @@ export async function handleTrelloCase(
     log.warn('No AI provider configured yet.')
     const providerChoice = await select('Choose AI provider:', [
       { label: 'Gemini', value: 'gemini' },
-      { label: 'GitHub Copilot', value: 'copilot' },
       { label: 'OpenRouter', value: 'openrouter' },
       { label: 'Groq', value: 'groq' },
+      { label: 'OpenAI Codex', value: 'codex' },
+      { label: 'OpenCode Zen', value: 'opencode-zen' },
       { label: 'Back to naming strategy', value: 'back' },
     ])
 
@@ -179,7 +181,12 @@ export async function handleTrelloCase(
       return { branchFlowComplete: false, branchMenuShown: false }
     }
 
-    const chosenProvider = providerChoice as 'gemini' | 'copilot' | 'openrouter' | 'groq'
+    const chosenProvider = providerChoice as
+      | 'gemini'
+      | 'openrouter'
+      | 'groq'
+      | 'codex'
+      | 'opencode-zen'
 
     // Let user choose model for the selected provider
     const chosenModel = await chooseModelForProvider(
@@ -195,16 +202,20 @@ export async function handleTrelloCase(
     // Save selected provider and model to state
     state.aiProvider = chosenProvider
     switch (chosenProvider) {
-      case 'copilot': {
-        state.copilotModel = chosenModel as CopilotModel
-        break
-      }
       case 'openrouter': {
         state.openrouterModel = chosenModel as OpenRouterModel
         break
       }
       case 'groq': {
         state.groqModel = chosenModel
+        break
+      }
+      case 'codex': {
+        state.codexModel = chosenModel
+        break
+      }
+      case 'opencode-zen': {
+        state.opencodeModel = chosenModel
         break
       }
       default: {
@@ -226,18 +237,22 @@ export async function handleTrelloCase(
       log.warn('No AI provider configured. Please choose a provider first.')
       return { branchFlowComplete: false, branchMenuShown: false }
     }
-    let modelParam: CopilotModel | OpenRouterModel | GeminiModel | string
+    let modelParam: OpenRouterModel | GeminiModel | string
     switch (aiProvider) {
-      case 'copilot': {
-        modelParam = state.copilotModel as CopilotModel
-        break
-      }
       case 'openrouter': {
         modelParam = state.openrouterModel as OpenRouterModel
         break
       }
       case 'groq': {
         modelParam = state.groqModel ?? ''
+        break
+      }
+      case 'codex': {
+        modelParam = state.codexModel ?? ''
+        break
+      }
+      case 'opencode-zen': {
+        modelParam = state.opencodeModel ?? ''
         break
       }
       default: {
@@ -248,16 +263,20 @@ export async function handleTrelloCase(
 
     let model: string | undefined
     switch (aiProvider) {
-      case 'copilot': {
-        model = state.copilotModel as unknown as string
-        break
-      }
       case 'openrouter': {
         model = state.openrouterModel as unknown as string
         break
       }
       case 'groq': {
         model = state.groqModel ?? undefined
+        break
+      }
+      case 'codex': {
+        model = state.codexModel
+        break
+      }
+      case 'opencode-zen': {
+        model = state.opencodeModel
         break
       }
       default: {
@@ -282,10 +301,12 @@ export async function handleTrelloCase(
         aiProvider,
         `Translate this to English (keep it concise): "${cardData.title}"`,
         '',
-        state.copilotModel,
+        undefined,
         state.openrouterModel,
         state.geminiModel,
-        state.groqModel
+        state.groqModel,
+        state.codexModel,
+        state.opencodeModel
       )
 
       // Stop spinner first to ensure error messages appear on new line
@@ -323,11 +344,12 @@ export async function handleTrelloCase(
         aiProvider,
         titleToProcess,
         correction,
-        state.copilotModel,
+        undefined,
         state.openrouterModel,
         state.geminiModel,
         state.groqModel,
-        state.codexModel
+        state.codexModel,
+        state.opencodeModel
       )
       spinner.stop()
     }
@@ -341,16 +363,11 @@ export async function handleTrelloCase(
         correction,
         state.currentBranch,
         (
-          provider: 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'codex',
+          provider: 'gemini' | 'openrouter' | 'groq' | 'codex' | 'opencode-zen',
           selectedModel?: string
         ) => {
           state.aiProvider = provider
           switch (provider) {
-            case 'copilot': {
-              state.copilotModel = selectedModel as CopilotModel
-              state.codexModel = undefined
-              break
-            }
             case 'openrouter': {
               state.openrouterModel = selectedModel as OpenRouterModel
               state.codexModel = undefined
@@ -363,6 +380,10 @@ export async function handleTrelloCase(
             }
             case 'codex': {
               state.codexModel = selectedModel
+              break
+            }
+            case 'opencode-zen': {
+              state.opencodeModel = selectedModel
               break
             }
             default: {
@@ -411,21 +432,21 @@ export async function handleTrelloCase(
             label: `Try again with ${getAIProviderShortName(aiProvider)}${model ? ` (${model})` : ''} model`,
             value: 'try-same',
           },
-          { label: 'Change model', value: 'change-model' },
-          { label: 'Change AI provider', value: 'change-provider' },
-          { label: 'Edit manually', value: 'edit' },
+          { label: 'Choose another model', value: 'change-model' },
+          { label: 'Choose another AI provider', value: 'change-provider' },
+          { label: 'Enter the branch name manually', value: 'edit' },
           { label: 'Back to card selection', value: 'back' },
         ]
       )
     } else {
-      acceptChoice = await select('Accept this branch name?', [
-        { label: 'Yes, use it', value: 'accept' },
-        { label: 'Regenerate', value: 'regenerate' },
-        { label: 'Correct AI (give feedback)', value: 'correct' },
-        { label: 'Change model', value: 'change-model' },
-        { label: 'Change AI provider', value: 'change-provider' },
-        { label: 'Edit manually', value: 'edit' },
-        { label: 'Back to card selection', value: 'back' },
+      acceptChoice = await select('Choose what to do with this branch name:', [
+        { label: 'Use this branch name', value: 'accept' },
+        { label: 'Generate a new branch name', value: 'regenerate' },
+        { label: 'Give AI feedback', value: 'correct' },
+        { label: 'Choose another model', value: 'change-model' },
+        { label: 'Choose another AI provider', value: 'change-provider' },
+        { label: 'Edit branch name manually', value: 'edit' },
+        { label: 'Return to card selection', value: 'back' },
       ])
     }
 
@@ -459,9 +480,10 @@ export async function handleTrelloCase(
         // let user pick another provider and optionally pick a model
         const prov = await select('Choose AI provider:', [
           { label: 'Gemini', value: 'gemini' },
-          { label: 'GitHub Copilot', value: 'copilot' },
           { label: 'OpenRouter', value: 'openrouter' },
           { label: 'Groq', value: 'groq' },
+          { label: 'OpenAI Codex', value: 'codex' },
+          { label: 'OpenCode Zen', value: 'opencode-zen' },
           { label: 'Back to suggested branch selection', value: 'cancel-prov' },
         ])
         if (prov === 'cancel-prov') {
@@ -469,10 +491,10 @@ export async function handleTrelloCase(
           skipRegenerate = true
           continue
         }
-        state.aiProvider = prov as 'gemini' | 'copilot' | 'openrouter' | 'groq'
+        state.aiProvider = prov as 'gemini' | 'openrouter' | 'groq' | 'codex' | 'opencode-zen'
 
         const chosen = await chooseModelForProvider(
-          state.aiProvider as 'gemini' | 'copilot' | 'openrouter' | 'groq',
+          state.aiProvider as 'gemini' | 'openrouter' | 'groq' | 'codex' | 'opencode-zen',
           'Choose model:',
           'Back to suggested branch selection'
         )
@@ -486,10 +508,6 @@ export async function handleTrelloCase(
         }
 
         switch (prov) {
-          case 'copilot': {
-            state.copilotModel = chosen as unknown as CopilotModel
-            break
-          }
           case 'openrouter': {
             state.openrouterModel = chosen as unknown as OpenRouterModel
             break
@@ -500,6 +518,14 @@ export async function handleTrelloCase(
           }
           case 'groq': {
             state.groqModel = chosen
+            break
+          }
+          case 'codex': {
+            state.codexModel = chosen
+            break
+          }
+          case 'opencode-zen': {
+            state.opencodeModel = chosen
             break
           }
           default: {
@@ -514,21 +540,6 @@ export async function handleTrelloCase(
         // change only the current provider's model
         const currentProv = getConfiguredAIProvider(state) ?? 'gemini'
         switch (currentProv) {
-          case 'copilot': {
-            const cop = await import('../api/copilot.js')
-            const models = await cop.getCopilotModels()
-            const copOptions = models.some((m) => m.value === 'back')
-              ? models
-              : [...models, { label: 'Back to suggested branch selection', value: 'back' }]
-            const chosen = await select('Choose GitHub Copilot model:', copOptions)
-            if (chosen === 'back') {
-              skipRegenerate = true
-              continue
-            }
-            state.copilotModel = chosen as unknown as CopilotModel
-
-            break
-          }
           case 'openrouter': {
             const or = await import('../api/openrouter.js')
             const models = await or.getOpenRouterModels()
@@ -556,6 +567,36 @@ export async function handleTrelloCase(
               continue
             }
             state.groqModel = chosen
+
+            break
+          }
+          case 'codex': {
+            const codex = await import('../api/codex.js')
+            const models = await codex.getCodexModels()
+            const codexOptions = models.some((m) => m.value === 'back')
+              ? models
+              : [...models, { label: 'Back to suggested branch selection', value: 'back' }]
+            const chosen = await select('Choose Codex model:', codexOptions)
+            if (chosen === 'back') {
+              skipRegenerate = true
+              continue
+            }
+            state.codexModel = chosen
+
+            break
+          }
+          case 'opencode-zen': {
+            const opencode = await import('../api/opencode.js')
+            const models = await opencode.getOpenCodeModels()
+            const opencodeOptions = models.some((m) => m.value === 'back')
+              ? models
+              : [...models, { label: 'Back to suggested branch selection', value: 'back' }]
+            const chosen = await select('Choose OpenCode Zen model:', opencodeOptions)
+            if (chosen === 'back') {
+              skipRegenerate = true
+              continue
+            }
+            state.opencodeModel = chosen
 
             break
           }

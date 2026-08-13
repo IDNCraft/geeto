@@ -122,31 +122,40 @@ const setupViaOAuth = async (): Promise<boolean> => {
     log.error('Codex CLI not found in PATH.')
     log.info('Install it first: npm install -g @openai/codex')
     log.info('Or: https://github.com/openai/codex')
-    const proceed = confirm('Mark as configured anyway (if you plan to install later)?', false)
+    const proceed = confirm(
+      'Save setup without verification? OpenAI Codex stays unavailable until the CLI is installed.',
+      false
+    )
     if (!proceed) return false
   }
 
   if (hasOAuthToken()) {
-    log.success('OAuth token found in ~/.codex/auth.json — Codex is already authenticated.')
+    log.success('OAuth token found in ~/.codex/auth.json — OpenAI Codex is already authenticated.')
 
     const { select } = await import('../cli/menu.js')
-    const action = await select('What would you like to do?', [
+    const action = await select('OpenAI Codex is authenticated. Choose an account action:', [
       { label: 'Keep existing login (no changes)', value: 'keep' },
       { label: 'Re-login (switch account or refresh token)', value: 'relogin' },
-      { label: 'Cancel', value: 'cancel' },
+      { label: 'Cancel OpenAI Codex setup', value: 'cancel' },
     ])
 
     if (action === 'cancel') return false
     if (action === 'relogin') {
       const ok = runCodexLogin()
       if (!ok) {
-        const force = confirm('Mark as configured anyway?', false)
+        const force = confirm(
+          'Save OpenAI Codex setup without verification? OpenAI Codex may remain unavailable until authentication succeeds.',
+          false
+        )
         if (!force) return false
       } else if (hasOAuthToken()) {
         log.success('OAuth token verified!')
       } else {
         log.warn('OAuth token not detected after login. Setup may be incomplete.')
-        const force = confirm('Mark as configured anyway?', false)
+        const force = confirm(
+          'Save OpenAI Codex setup without verification? OpenAI Codex may remain unavailable until authentication succeeds.',
+          false
+        )
         if (!force) return false
       }
     }
@@ -156,13 +165,19 @@ const setupViaOAuth = async (): Promise<boolean> => {
     const ok = runCodexLogin()
     if (!ok) {
       log.warn('codex login did not complete successfully.')
-      const force = confirm('Mark as configured anyway?', false)
+      const force = confirm(
+        'Save OpenAI Codex setup without verification? OpenAI Codex may remain unavailable until authentication succeeds.',
+        false
+      )
       if (!force) return false
     } else if (hasOAuthToken()) {
       log.success('OAuth token verified!')
     } else {
       log.warn('OAuth token not found in ~/.codex/auth.json after login.')
-      const force = confirm('Mark as configured anyway?', false)
+      const force = confirm(
+        'Save OpenAI Codex setup without verification? OpenAI Codex may remain unavailable until authentication succeeds.',
+        false
+      )
       if (!force) return false
     }
   }
@@ -181,7 +196,7 @@ const setupViaOAuth = async (): Promise<boolean> => {
       ].join('\n') + '\n'
 
     fs.writeFileSync(configPath, content, 'utf8')
-    log.success('Codex OAuth configuration saved.')
+    log.success('OpenAI Codex OAuth configuration saved.')
     return true
   } catch (error) {
     log.error(`Failed to save config: ${(error as Error).message}`)
@@ -199,7 +214,7 @@ export const setupCodexConfigInteractive = async (): Promise<boolean> => {
     console.log('')
   }
 
-  const authMethod = await select('Choose Codex authentication method:', [
+  const authMethod = await select('Choose OpenAI Codex authentication method:', [
     {
       label: 'API Token — paste your OpenAI API key (sk-...)',
       value: 'token',
@@ -208,7 +223,7 @@ export const setupCodexConfigInteractive = async (): Promise<boolean> => {
       label: 'OAuth — use `codex login` (browser-based login)',
       value: 'oauth',
     },
-    { label: 'Back', value: 'back' },
+    { label: 'Cancel OpenAI Codex setup', value: 'back' },
   ])
 
   if (authMethod === 'back') return false

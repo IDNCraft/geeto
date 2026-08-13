@@ -44,11 +44,11 @@ export const handleRevert = async (): Promise<void> => {
   )
   console.log('')
 
-  const mode = await select('Choose reset mode:', [
+  const mode = await select('Choose how to undo the last commit:', [
     { label: 'Soft — keep changes staged', value: 'soft' },
     { label: 'Mixed — keep changes unstaged', value: 'mixed' },
     { label: 'Hard — discard all changes', value: 'hard' },
-    { label: 'Cancel', value: 'cancel' },
+    { label: 'Cancel reset', value: 'cancel' },
   ])
 
   if (mode === 'cancel') {
@@ -57,7 +57,10 @@ export const handleRevert = async (): Promise<void> => {
   }
 
   if (mode === 'hard') {
-    const sure = confirm('This will DISCARD all changes. Are you sure?', false)
+    const sure = confirm(
+      'Confirm hard reset of the last commit? This permanently discards all working-tree changes.',
+      false
+    )
     if (!sure) {
       log.info('Cancelled.')
       return

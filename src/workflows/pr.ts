@@ -3,7 +3,6 @@
  * Push current branch & create a PR on GitHub or MR on GitLab
  */
 
-import type { CopilotModel } from '../api/copilot.js'
 import type { GeminiModel } from '../api/gemini.js'
 import type { OpenRouterModel } from '../api/openrouter.js'
 
@@ -122,7 +121,7 @@ const callAIForPR = async (
   commits: string[],
   branchName: string,
   baseBranch: string,
-  provider: 'copilot' | 'gemini' | 'openrouter' | 'groq' | 'codex',
+  provider: 'gemini' | 'openrouter' | 'groq' | 'codex' | 'opencode-zen',
   model: string | undefined,
   correction?: string
 ): Promise<{ title: string; body: string } | null> => {
@@ -150,9 +149,11 @@ const callAIForPR = async (
     result = await generateTextWithProvider(
       provider,
       prompt,
-      model as CopilotModel,
+      undefined,
       model as OpenRouterModel,
       (model as GeminiModel) ?? 'gemini-2.5-flash',
+      model,
+      model,
       model
     )
     spinner.stop()
@@ -218,7 +219,9 @@ export const handleCreatePR = async (): Promise<void> => {
       console.log(`  ${colors.cyan}#${pr.number}${colors.reset} ${pr.title}`)
       console.log(`  ${colors.gray}${pr.url}${colors.reset}\n`)
 
-      const cont = confirm(`Create another ${prLabel} anyway?`)
+      const cont = confirm(
+        `Create another open ${prLabel} anyway? This may create a duplicate for the same branch.`
+      )
       if (!cont) return
       console.log('')
     }
@@ -298,7 +301,7 @@ export const handleCreatePR = async (): Promise<void> => {
         commits,
         current,
         baseBranch,
-        aiProvider,
+        aiProvider ?? 'gemini',
         currentModel,
         correction
       )
@@ -308,18 +311,25 @@ export const handleCreatePR = async (): Promise<void> => {
 
       if (failed) {
         log.warn('AI generation failed or hit context limits.')
-        const failureAction = await select('How would you like to continue?', [
-          { label: 'Change model and retry', value: 'change-model' },
-          { label: 'Change AI provider and retry', value: 'change-provider' },
-          { label: 'Discard & enter manually', value: 'discard' },
-        ])
+        const failureAction = await select(
+          'Pull request generation failed. Choose a different model/provider to retry, or enter the text manually:',
+          [
+            { label: 'Change model and retry', value: 'change-model' },
+            { label: 'Change AI provider and retry', value: 'change-provider' },
+            { label: 'Discard & enter manually', value: 'discard' },
+          ]
+        )
 
         if (failureAction === 'change-model') {
           const { chooseModelForProvider } = await import('../utils/git-ai.js')
-          const chosen = await chooseModelForProvider(aiProvider, 'Choose model:', 'Back')
+          const chosen = await chooseModelForProvider(
+            aiProvider ?? 'gemini',
+            'Choose model:',
+            'Keep current model'
+          )
           if (chosen && chosen !== 'back') {
             currentModel = chosen
-            updateModelInState(state, aiProvider, chosen)
+            updateModelInState(state, aiProvider ?? 'gemini', chosen)
           }
           correction = ''
           continue
@@ -328,21 +338,21 @@ export const handleCreatePR = async (): Promise<void> => {
         if (failureAction === 'change-provider') {
           const prov = await select('Choose AI provider:', [
             { label: 'Gemini', value: 'gemini' },
-            { label: 'GitHub Copilot', value: 'copilot' },
             { label: 'OpenRouter', value: 'openrouter' },
             { label: 'Groq', value: 'groq' },
-            { label: 'Codex', value: 'codex' },
-            { label: 'Back', value: 'back' },
+            { label: 'OpenAI Codex', value: 'codex' },
+            { label: 'OpenCode Zen', value: 'opencode-zen' },
+            { label: 'Keep current provider', value: 'back' },
           ])
           if (prov !== 'back') {
             const { chooseModelForProvider } = await import('../utils/git-ai.js')
             const chosen = await chooseModelForProvider(
-              prov as 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'codex',
+              prov as 'gemini' | 'openrouter' | 'groq' | 'codex' | 'opencode-zen',
               'Choose model:',
-              'Back'
+              'Keep current model'
             )
             if (chosen && chosen !== 'back') {
-              aiProvider = prov as 'copilot' | 'gemini' | 'openrouter' | 'groq' | 'codex'
+              aiProvider = prov as 'gemini' | 'openrouter' | 'groq' | 'codex' | 'opencode-zen'
               currentModel = chosen
               if (state) {
                 state.aiProvider = aiProvider
@@ -367,14 +377,14 @@ export const handleCreatePR = async (): Promise<void> => {
       showAIPreview(prLabel, prTitle, prBody)
       log.info('Incorrect? check .geeto/last-ai-suggestion.json (possible AI/context limit).')
 
-      const action = await select(`Accept this ${prLabel} content?`, [
-        { label: 'Yes, use it', value: 'accept' },
-        { label: 'Regenerate', value: 'regenerate' },
-        { label: 'Correct AI (give feedback)', value: 'correct' },
-        { label: 'Edit inline', value: 'edit' },
-        { label: 'Change model', value: 'change-model' },
-        { label: 'Change AI provider', value: 'change-provider' },
-        { label: 'Discard & enter manually', value: 'discard' },
+      const action = await select(`Choose what to do with this ${prLabel}:`, [
+        { label: `Use this ${prLabel}`, value: 'accept' },
+        { label: `Generate a new ${prLabel} draft`, value: 'regenerate' },
+        { label: 'Give AI feedback', value: 'correct' },
+        { label: `Edit the ${prLabel} manually`, value: 'edit' },
+        { label: 'Switch model', value: 'change-model' },
+        { label: 'Switch AI provider', value: 'change-provider' },
+        { label: 'Discard draft and enter manually', value: 'discard' },
       ])
 
       switch (action) {
@@ -403,10 +413,14 @@ export const handleCreatePR = async (): Promise<void> => {
         }
         case 'change-model': {
           const { chooseModelForProvider } = await import('../utils/git-ai.js')
-          const chosen = await chooseModelForProvider(aiProvider, 'Choose model:', 'Back')
+          const chosen = await chooseModelForProvider(
+            aiProvider ?? 'gemini',
+            'Choose model:',
+            'Keep current model'
+          )
           if (chosen && chosen !== 'back') {
             currentModel = chosen
-            updateModelInState(state, aiProvider, chosen)
+            updateModelInState(state, aiProvider ?? 'gemini', chosen)
           }
           correction = ''
           continue
@@ -414,21 +428,21 @@ export const handleCreatePR = async (): Promise<void> => {
         case 'change-provider': {
           const prov = await select('Choose AI provider:', [
             { label: 'Gemini', value: 'gemini' },
-            { label: 'GitHub Copilot', value: 'copilot' },
             { label: 'OpenRouter', value: 'openrouter' },
             { label: 'Groq', value: 'groq' },
-            { label: 'Codex', value: 'codex' },
-            { label: 'Back', value: 'back' },
+            { label: 'OpenAI Codex', value: 'codex' },
+            { label: 'OpenCode Zen', value: 'opencode-zen' },
+            { label: 'Keep current provider', value: 'back' },
           ])
           if (prov !== 'back') {
             const { chooseModelForProvider } = await import('../utils/git-ai.js')
             const chosen = await chooseModelForProvider(
-              prov as 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'codex',
+              prov as 'gemini' | 'openrouter' | 'groq' | 'codex' | 'opencode-zen',
               'Choose model:',
-              'Back'
+              'Keep current model'
             )
             if (chosen && chosen !== 'back') {
-              aiProvider = prov as 'copilot' | 'gemini' | 'openrouter' | 'groq' | 'codex'
+              aiProvider = prov as 'gemini' | 'openrouter' | 'groq' | 'codex' | 'opencode-zen'
               currentModel = chosen
               if (state) {
                 state.aiProvider = aiProvider

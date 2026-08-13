@@ -3,13 +3,12 @@
   "version": "0.12.0",
   "description": "AI-powered Git workflow automation CLI with smart commit messages, branch naming, and Trello integration",
   "author": {
-    "email": "amdev142@gmail.com",
-    "name": "Agung Maulana Malik",
-    "url": "https://github.com/rust142"
+    "name": "IDNCraft",
+    "url": "https://github.com/orgs/IDNCraft"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/rust142/geeto.git"
+    "url": "git+https://github.com/IDNCraft/geeto.git"
   },
   "keywords": [
     "git",
@@ -18,7 +17,6 @@
     "commit-message",
     "branch-name",
     "gemini",
-    "copilot",
     "workflow",
     "trello",
     "openrouter",
@@ -32,7 +30,6 @@
     "commit",
     "branch-naming",
     "release-manager",
-    "github-copilot",
     "developer-tools",
     "git-workflow",
     "semver",
@@ -87,8 +84,7 @@
     "postpublish": "pinst --enable",
     "lint-staged": "lint-staged",
     "tools:install": "sh tools/install.sh",
-    "install:local": "bash scripts/install-local.sh",
-    "copilot": "gh"
+    "install:local": "bash scripts/install-local.sh"
   },
   "devDependencies": {
     "@commitlint/cli": "^20.4.2",
@@ -124,7 +120,9 @@
   "dependencies": {
     "@google/genai": "^1.42.0",
     "@openai/codex-sdk": "^0.144.3",
-    "openai": "^6.39.1"
+    "@opencode-ai/sdk": "1.18.16",
+    "openai": "^6.39.1",
+    "opencode-ai": "1.18.16"
   },
   "commitlint": {
     "extends": [

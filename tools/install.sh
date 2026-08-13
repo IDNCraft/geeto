@@ -4,7 +4,7 @@ set -e
 
 # Require bash (fail fast if run under /bin/sh)
 if [ -z "$BASH_VERSION" ]; then
-  echo "This installer requires bash. Run with: curl -fsSL https://raw.githubusercontent.com/rust142/geeto/main/tools/install.sh | bash"
+  echo "This installer requires bash. Run with: curl -fsSL https://raw.githubusercontent.com/IDNCraft/geeto/main/tools/install.sh | bash"
   exit 1
 fi
 
@@ -160,7 +160,7 @@ main() {
   # ── Step 2: Clone repository ────────────────────────────────────
   CLEANUP_TMP="$(mktemp -d)"
 
-  git clone --depth 1 https://github.com/rust142/geeto.git "$CLEANUP_TMP" >>"$LOGFILE" 2>&1 &
+  git clone --depth 1 https://github.com/IDNCraft/geeto.git "$CLEANUP_TMP" >>"$LOGFILE" 2>&1 &
   local clone_pid=$!
   step_spinner $clone_pid 2 "Cloning repository" || {
     echo -e "  ${RED}Failed to clone. Check network or see ${LOGFILE}${NC}"

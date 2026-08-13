@@ -20,19 +20,12 @@ export const setupGeminiConfigInteractive = (): boolean => {
     // fall through to interactive setup
   }
 
-  log.info('Gemini integration is not configured for this project.\n')
+  log.info('Use Gemini to generate branch names, commit messages, and release notes.')
+  log.info('Choose from available models during a workflow; Geeto remembers your selection.')
+  log.info('Your API key will be saved to ~/.geeto/gemini.toml and reused across projects.')
+  log.info('Get a key from: https://aistudio.google.com/apikey\n')
 
-  log.info('Google Gemini provides several models with different cost/latency trade-offs.')
-  log.info('Geeto will prompt you to choose a model interactively when using Gemini.')
-  log.info(
-    'This setup only stores a project-local API key (gemini_api_key) — model selection is interactive and persisted in workflow state.'
-  )
-  log.info('The Gemini API key will be saved to .geeto/gemini.toml (or ~/.geeto/ globally).')
-  log.info(
-    'You need a Gemini API key to use this service. Get one from: https://aistudio.google.com/apikey\n'
-  )
-
-  const shouldSetup = confirm('Setup Gemini integration now?')
+  const shouldSetup = confirm('Connect Gemini now?')
   if (!shouldSetup) {
     return false
   }
@@ -55,7 +48,9 @@ export const setupGeminiConfigInteractive = (): boolean => {
   const geminiKey = askQuestion('Enter Gemini API Key: ').trim()
 
   if (!geminiKey) {
-    log.warn('No API key provided. Gemini setup cancelled.')
+    log.warn(
+      'No API key entered; Gemini setup was not saved. Run `geeto --setup-gemini` to try again.'
+    )
     return false
   }
 

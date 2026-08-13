@@ -164,7 +164,7 @@ export const handleBranchCompare = async (): Promise<void> => {
     }
   })
 
-  const target = await select('Compare current branch with:', options)
+  const target = await select('Choose a branch to compare with the current branch:', options)
 
   if (!target) return
 

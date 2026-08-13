@@ -24,13 +24,12 @@ import {
 import { askQuestion, editMultiline } from '../cli/input.js'
 import { multiSelect, select } from '../cli/menu.js'
 import { colors } from '../utils/colors.js'
-import { hasTrelloConfig } from '../utils/config.js'
-import { commandExists, exec } from '../utils/exec.js'
+import { ensureGeetoIgnored, hasTrelloConfig } from '../utils/config.js'
 import { log } from '../utils/logging.js'
 
 /**
  * Generate individual task files from selected Trello list cards
- * Creates tasks/ directory with README.md (AI instructions) + card-{id}-{slug}.md per card
+ * Creates .geeto/tasks/card-{id}-{slug}.md per card
  */
 export const handleGenerateTaskInstructions = async (): Promise<void> => {
   log.step('Generate Task Instructions')
@@ -50,7 +49,9 @@ export const handleGenerateTaskInstructions = async (): Promise<void> => {
 
   if (lists.length === 0) {
     spinner.fail('No lists found')
-    log.warn('Make sure your Trello credentials are valid and the board exists.')
+    log.warn(
+      'Check `.geeto/trello.toml` for a valid API key, token, and board ID, then run `geeto --trello-generate` again.'
+    )
     return
   }
 
@@ -61,7 +62,7 @@ export const handleGenerateTaskInstructions = async (): Promise<void> => {
     label: list.name,
     value: list.id,
   }))
-  listChoices.push({ label: 'Cancel', value: 'cancel' })
+  listChoices.push({ label: 'Cancel task generation', value: 'cancel' })
 
   const selectedListId = await select('Select a Trello list to generate tasks from:', listChoices)
 
@@ -109,7 +110,7 @@ export const handleGenerateTaskInstructions = async (): Promise<void> => {
   )
 
   if (selectedCardIds.length === 0) {
-    log.warn('No cards selected. Cancelled.')
+    log.info('No cards selected; task files were not created.')
     return
   }
 
@@ -118,44 +119,12 @@ export const handleGenerateTaskInstructions = async (): Promise<void> => {
 
   log.success(`Selected ${colors.cyan}${cards.length}${colors.reset} of ${allCards.length} cards`)
 
-  // Detect editor from terminal environment to determine output path
-  let editorCommand: string | null = null
-  let tasksDir: string
-
-  const termProgram = process.env.TERM_PROGRAM
-  const vsCodeHandle = process.env.VSCODE_GIT_IPC_HANDLE
-  const vsCodeInjection = process.env.VSCODE_INJECTION
-  const cursorExecutable = process.env.CURSOR_EXECUTABLE
-
-  if (cursorExecutable || termProgram === 'cursor') {
-    // Running in Cursor terminal - save to .cursor/tasks/
-    tasksDir = path.join(process.cwd(), '.cursor', 'tasks')
-    if (commandExists('cursor')) {
-      editorCommand = 'cursor'
-    }
-  } else if (vsCodeHandle || vsCodeInjection || termProgram === 'vscode') {
-    // Running in VSCode terminal - save to .github/instructions/tasks/
-    tasksDir = path.join(process.cwd(), '.github', 'instructions', 'tasks')
-    if (commandExists('code')) {
-      editorCommand = 'code'
-    }
-  } else if (termProgram?.toLowerCase().includes('jetbrains')) {
-    // Running in JetBrains IDE terminal - save to .idea/tasks/
-    tasksDir = path.join(process.cwd(), '.idea', 'tasks')
-    const jetbrainsCommands = ['webstorm', 'idea', 'pycharm', 'phpstorm', 'rubymine', 'goland']
-    for (const cmd of jetbrainsCommands) {
-      if (commandExists(cmd)) {
-        editorCommand = cmd
-        break
-      }
-    }
-  } else {
-    // Fallback - save to .github/instructions/tasks/
-    tasksDir = path.join(process.cwd(), '.github', 'instructions', 'tasks')
-  }
+  const tasksDir = path.join(process.cwd(), '.geeto', 'tasks')
 
   // Write task files
   try {
+    ensureGeetoIgnored()
+
     // Create tasks directory if it doesn't exist
     if (!fs.existsSync(tasksDir)) {
       fs.mkdirSync(tasksDir, { recursive: true })
@@ -206,44 +175,6 @@ ${card.desc?.trim() ? card.desc : 'No description provided.'}
     log.success(
       `Generated ${colors.cyan}${cards.length}${colors.reset} task files in ${colors.cyan}${tasksDir}${colors.reset}`
     )
-
-    // Auto-open tasks directory in detected editor
-    if (editorCommand) {
-      try {
-        exec(`${editorCommand} "${tasksDir}"`, true)
-        log.info(`Opening tasks directory in ${editorCommand}...`)
-      } catch {
-        // Ignore open errors (not critical)
-      }
-    }
-
-    // Add to .gitignore if not already there
-    const gitignorePath = path.join(process.cwd(), '.gitignore')
-    try {
-      let gitignoreContent = ''
-      if (fs.existsSync(gitignorePath)) {
-        gitignoreContent = fs.readFileSync(gitignorePath, 'utf8')
-      }
-
-      // Check if Trello-generated tasks section already exists
-      const lines = gitignoreContent.split('\n')
-      const hasTrelloSection = lines.some((line) => line.trim() === '# Trello-generated tasks')
-
-      if (!hasTrelloSection) {
-        // Add complete Trello-generated tasks section to .gitignore
-        const trelloSection = `\n# Trello-generated tasks\n**/tasks/card-*.md\n`
-        const newContent = gitignoreContent.endsWith('\n')
-          ? `${gitignoreContent}${trelloSection}`
-          : `${gitignoreContent}${trelloSection}`
-        fs.writeFileSync(gitignorePath, newContent, 'utf8')
-        log.success('Added Trello-generated tasks section to .gitignore')
-      }
-    } catch (gitignoreError) {
-      // Ignore gitignore errors (not critical)
-      log.warn(
-        `Could not update .gitignore: ${gitignoreError instanceof Error ? gitignoreError.message : String(gitignoreError)}`
-      )
-    }
   } catch (error) {
     log.error(`Failed to write files: ${error instanceof Error ? error.message : String(error)}`)
   }
@@ -260,12 +191,14 @@ const pickList = async (): Promise<string | null> => {
   const lists = await fetchTrelloLists()
   spinner.stop()
   if (lists.length === 0) {
-    log.warn('No lists found.')
+    log.warn(
+      'No Trello lists found. Check the selected board and Trello credentials, then try again.'
+    )
     return null
   }
-  const choice = await select('Select list:', [
+  const choice = await select('Which Trello list should be used?', [
     ...lists.map((l) => ({ label: l.name, value: l.id })),
-    { label: 'Cancel', value: 'cancel' },
+    { label: 'Cancel list selection', value: 'cancel' },
   ])
   return choice === 'cancel' ? null : choice
 }
@@ -278,7 +211,9 @@ const pickCard = async (
   const cards = await fetchTrelloCards(listId)
   spinner.stop()
   if (cards.length === 0) {
-    log.warn('No cards found.')
+    log.warn(
+      'No cards found in the selected Trello list. Add a card or choose another list, then try again.'
+    )
     return null
   }
   const toSlug = (n: string) =>
@@ -287,9 +222,9 @@ const pickCard = async (
       .replaceAll(/[^a-z0-9]+/g, '-')
       .replaceAll(/^-|-$/g, '')
       .slice(0, 40)
-  const choice = await select('Select card:', [
+  const choice = await select('Which Trello card should be used?', [
     ...cards.map((c) => ({ label: `#${c.idShort} ${c.name.slice(0, 50)}`, value: c.id })),
-    { label: 'Cancel', value: 'cancel' },
+    { label: 'Cancel card selection', value: 'cancel' },
   ])
   if (choice === 'cancel') return null
   return cards.find((c) => c.id === choice) ?? null
@@ -307,12 +242,12 @@ const pickLabel = async (
     log.warn('No labels found.')
     return null
   }
-  const choice = await select('Select label:', [
+  const choice = await select('Which Trello label should be applied?', [
     ...(labels as import('../types/index.js').TrelloLabel[]).map((l) => ({
       label: `${l.color ?? 'no color'}  ${l.name || '(unnamed)'}`,
       value: l.id,
     })),
-    { label: 'Cancel', value: 'cancel' },
+    { label: 'Cancel label selection', value: 'cancel' },
   ])
   return choice === 'cancel' ? null : choice
 }
@@ -330,7 +265,7 @@ const showCardActions = async (card: import('../types/index.js').TrelloCard): Pr
       { label: `Labels (${labelCount} attached)`, value: 'labels' },
       { label: 'Archive', value: 'archive' },
       { label: 'Delete', value: 'delete' },
-      { label: 'Back', value: 'back' },
+      { label: 'Return to card list', value: 'back' },
     ])
 
     if (action === 'back') return
@@ -349,7 +284,7 @@ const showCardActions = async (card: import('../types/index.js').TrelloCard): Pr
       if (ok) {
         current = { ...current, name: value }
         log.success('Name updated.')
-      } else log.error('Failed.')
+      } else log.error('Failed to update the card name. Check Trello access, then try again.')
       continue
     }
 
@@ -366,7 +301,8 @@ const showCardActions = async (card: import('../types/index.js').TrelloCard): Pr
       if (ok) {
         current = { ...current, desc: value }
         log.success('Description updated.')
-      } else log.error('Failed.')
+      } else
+        log.error('Failed to update the card description. Check Trello access, then try again.')
       continue
     }
 
@@ -380,7 +316,7 @@ const showCardActions = async (card: import('../types/index.js').TrelloCard): Pr
       if (ok) {
         current = { ...current, idList: destListId }
         log.success('Card moved.')
-      } else log.error('Failed.')
+      } else log.error('Failed to move the card. Check Trello access, then try again.')
       continue
     }
 
@@ -388,7 +324,7 @@ const showCardActions = async (card: import('../types/index.js').TrelloCard): Pr
       const labelAction = await select(`Labels (${labelCount} attached):`, [
         { label: 'Add label', value: 'add' },
         { label: 'Remove label', value: 'remove' },
-        { label: 'Back', value: 'back' },
+        { label: 'Return to card actions', value: 'back' },
       ])
       if (labelAction === 'back') continue
 
@@ -411,7 +347,7 @@ const showCardActions = async (card: import('../types/index.js').TrelloCard): Pr
           const added = boardLabels.find((l) => l.id === labelId)
           if (added) current = { ...current, labels: [...(current.labels ?? []), added] }
           log.success('Label added.')
-        } else log.error('Failed.')
+        } else log.error('Failed to add the label. Check Trello access, then try again.')
       } else {
         if (!current.labels || current.labels.length === 0) {
           log.warn('No labels on this card.')
@@ -426,7 +362,7 @@ const showCardActions = async (card: import('../types/index.js').TrelloCard): Pr
         if (ok) {
           current = { ...current, labels: current.labels.filter((l) => l.id !== labelId) }
           log.success('Label removed.')
-        } else log.error('Failed.')
+        } else log.error('Failed to remove the label. Check Trello access, then try again.')
       }
       continue
     }
@@ -436,7 +372,11 @@ const showCardActions = async (card: import('../types/index.js').TrelloCard): Pr
       spinner.start('Archiving...')
       const ok = await archiveTrelloCard(current.id)
       spinner.stop()
-      log.success(ok ? 'Card archived.' : 'Failed.')
+      if (ok) {
+        log.success('Card archived.')
+      } else {
+        log.error('Failed to archive the card. Check Trello access, then try again.')
+      }
       return
     }
 
@@ -463,7 +403,7 @@ const showCardsMenu = async (): Promise<void> => {
     const choice = await select('Cards:', [
       { label: 'Select card to manage', value: 'manage' },
       { label: 'Create card', value: 'create' },
-      { label: 'Back', value: 'back' },
+      { label: 'Return to Trello menu', value: 'back' },
     ])
 
     if (choice === 'back') return
@@ -501,12 +441,12 @@ const showCardsMenu = async (): Promise<void> => {
 
 const showLabelsMenu = async (): Promise<void> => {
   while (true) {
-    const choice = await select('Labels:', [
-      { label: 'View all labels', value: 'view' },
-      { label: 'Create label', value: 'create' },
-      { label: 'Edit label', value: 'edit' },
-      { label: 'Delete label', value: 'delete' },
-      { label: 'Back', value: 'back' },
+    const choice = await select('Manage Trello board labels:', [
+      { label: 'View board labels', value: 'view' },
+      { label: 'Create a label', value: 'create' },
+      { label: 'Edit a label', value: 'edit' },
+      { label: 'Delete a label', value: 'delete' },
+      { label: 'Return to Trello menu', value: 'back' },
     ])
 
     if (choice === 'back') return
@@ -529,9 +469,9 @@ const showLabelsMenu = async (): Promise<void> => {
 
     if (choice === 'create') {
       const name = askQuestion('Label name: ').trim()
-      const colorChoice = await select('Color:', [
+      const colorChoice = await select('Choose a label color:', [
         ...TRELLO_LABEL_COLORS.map((c) => ({ label: c, value: c })),
-        { label: 'No color', value: '' },
+        { label: 'No label color', value: '' },
       ])
       const spinner = log.spinner()
       spinner.start('Creating label...')

@@ -1,4 +1,3 @@
-import type { CopilotModel } from '../api/copilot.js'
 import type { GeminiModel } from '../api/gemini.js'
 import type { OpenRouterModel } from '../api/openrouter.js'
 
@@ -7,9 +6,9 @@ import { DEFAULT_GEMINI_MODEL } from './config.js'
 import { log } from './logging.js'
 import { loadState, saveState } from './state.js'
 
-export type AIProvider = 'copilot' | 'gemini' | 'openrouter' | 'groq' | 'codex'
+export type AIProvider = 'gemini' | 'openrouter' | 'groq' | 'codex' | 'opencode-zen'
 
-const AI_PROVIDERS = new Set<string>(['copilot', 'gemini', 'openrouter', 'groq', 'codex'])
+const AI_PROVIDERS = new Set<string>(['gemini', 'openrouter', 'groq', 'codex', 'opencode-zen'])
 
 /**
  * Resolve a persisted provider only when it is a real AI provider.
@@ -29,10 +28,10 @@ export const getModelForProvider = (
   provider: AIProvider,
   state: ReturnType<typeof loadState>
 ): string | undefined => {
-  if (provider === 'copilot') return state?.copilotModel
   if (provider === 'openrouter') return state?.openrouterModel
   if (provider === 'groq') return state?.groqModel
   if (provider === 'codex') return state?.codexModel
+  if (provider === 'opencode-zen') return state?.opencodeModel
   return state?.geminiModel ?? DEFAULT_GEMINI_MODEL
 }
 
@@ -46,10 +45,6 @@ export const updateModelInState = (
 ): void => {
   if (!state) return
   switch (provider) {
-    case 'copilot': {
-      state.copilotModel = model as CopilotModel
-      break
-    }
     case 'openrouter': {
       state.openrouterModel = model as OpenRouterModel
       break
@@ -60,6 +55,10 @@ export const updateModelInState = (
     }
     case 'codex': {
       state.codexModel = model
+      break
+    }
+    case 'opencode-zen': {
+      state.opencodeModel = model
       break
     }
     default: {

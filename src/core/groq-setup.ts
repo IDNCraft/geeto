@@ -17,11 +17,12 @@ export const setupGroqConfigInteractive = (): boolean => {
     // fall through to interactive setup
   }
 
-  log.info('Groq provides free access to fast LLM models (Llama, Gemma, Mixtral).\n')
-  log.info('Get your free API key at: https://console.groq.com/keys')
-  log.info('Config will be saved to .geeto/groq.toml (or ~/.geeto/ globally).\n')
+  log.info('Use Groq for fast AI-generated branches, commits, and release notes.')
+  log.info('Free models are available; usage limits depend on your Groq account.')
+  log.info('Your API key will be saved to ~/.geeto/groq.toml and reused across projects.')
+  log.info('Get a key from: https://console.groq.com/keys\n')
 
-  const shouldSetup = confirm('Setup Groq integration now?')
+  const shouldSetup = confirm('Connect Groq now?')
   if (!shouldSetup) return false
 
   const openKeyPage = confirm('Open Groq API key page in your browser?')
@@ -34,7 +35,7 @@ export const setupGroqConfigInteractive = (): boolean => {
 
   const apiKey = askQuestion('Enter Groq API Key: ').trim()
   if (!apiKey) {
-    log.warn('No API key provided. Groq setup cancelled.')
+    log.warn('No API key entered; Groq setup was not saved. Run `geeto --setup-groq` to try again.')
     return false
   }
 

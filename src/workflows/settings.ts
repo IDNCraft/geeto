@@ -15,6 +15,7 @@ import {
   GLOBAL_GEETO_DIR,
   hasGeminiConfig,
   hasTrelloConfig,
+  resolveConfigPath,
   saveBranchStrategyConfig,
   saveCommitConfig,
 } from '../utils/config.js'
@@ -26,7 +27,7 @@ const configDirPath = () => path.join(process.cwd(), '.geeto')
 const configFilePath = (name: string) => path.join(configDirPath(), `${name}.toml`)
 
 const removeConfigFile = (name: string): boolean => {
-  const p = configFilePath(name)
+  const p = resolveConfigPath(`${name}.toml`)
   if (existsSync(p)) {
     unlinkSync(p)
     return true
@@ -53,7 +54,15 @@ const moveConfigToGlobal = (name: string): boolean => {
   }
 }
 
-const AI_PROVIDERS = ['gemini', 'openrouter', 'groq', 'codex', 'github', 'gitlab'] as const
+const AI_PROVIDERS = [
+  'gemini',
+  'openrouter',
+  'groq',
+  'codex',
+  'github',
+  'gitlab',
+  'opencode-zen',
+] as const
 type AiProvider = (typeof AI_PROVIDERS)[number]
 
 const globalConfigPath = (name: string) => path.join(GLOBAL_GEETO_DIR, `${name}.toml`)
@@ -81,16 +90,11 @@ const handleGlobalConfigSetting = async (): Promise<boolean | void> => {
   while (true) {
     const configured = globalProviders()
 
-    if (configured.length === 0) {
-      log.info('No global AI config found in ~/.geeto/')
-      return false
-    }
-
-    const action = await select('Global config (~/.geeto/):', [
-      { label: 'View info', value: 'view' },
-      { label: 'Configure a provider globally', value: 'configure' },
-      { label: 'Remove a provider from global', value: 'remove' },
-      { label: 'Back to settings menu', value: 'back' },
+    const action = await select('Manage global config (~/.geeto/):', [
+      { label: 'View saved credentials and provider status', value: 'view' },
+      { label: 'Set up a provider for all projects', value: 'configure' },
+      { label: 'Remove a provider from global config', value: 'remove' },
+      { label: 'Return to settings menu', value: 'back' },
     ])
 
     if (action === 'back') return true
@@ -105,14 +109,15 @@ const handleGlobalConfigSetting = async (): Promise<boolean | void> => {
     }
 
     if (action === 'configure') {
-      const provider = await select('Which provider to configure globally?', [
+      const provider = await select('Which provider should be available globally?', [
         { label: 'Gemini', value: 'gemini' },
         { label: 'OpenRouter', value: 'openrouter' },
         { label: 'Groq', value: 'groq' },
-        { label: 'Codex', value: 'codex' },
-        { label: 'GitHub Copilot', value: 'github' },
+        { label: 'OpenAI Codex', value: 'codex' },
+        { label: 'GitHub', value: 'github' },
         { label: 'GitLab', value: 'gitlab' },
-        { label: 'Back', value: 'back' },
+        { label: 'OpenCode Zen', value: 'opencode-zen' },
+        { label: 'Return to global config menu', value: 'back' },
       ])
       if (provider === 'back') continue
 
@@ -150,6 +155,10 @@ const handleGlobalConfigSetting = async (): Promise<boolean | void> => {
           setupGitlabConfigInteractive()
           break
         }
+        case 'opencode-zen': {
+          await handleOpenCodeSetting()
+          break
+        }
       }
       continue
     }
@@ -159,8 +168,8 @@ const handleGlobalConfigSetting = async (): Promise<boolean | void> => {
         label: p,
         value: p,
       }))
-      choices.push({ label: 'Back', value: 'back' })
-      const provider = await select('Which provider to remove from global?', choices)
+      choices.push({ label: 'Return to global config menu', value: 'back' })
+      const provider = await select('Which provider should be removed from global config?', choices)
       if (provider === 'back') continue
 
       const gp = globalConfigPath(provider)
@@ -180,7 +189,7 @@ const runInteractiveSetup = async (name: 'trello' | 'openrouter' | 'gemini' | 'g
     if (trelloSetupSuccess) {
       log.success('Trello integration configured!')
     } else {
-      log.warn('Trello setup failed or cancelled.')
+      log.warn('Trello setup was not completed. Run `geeto --setup-trello` to try again.')
     }
     return
   }
@@ -191,7 +200,7 @@ const runInteractiveSetup = async (name: 'trello' | 'openrouter' | 'gemini' | 'g
     if (geminiSetupSuccess) {
       log.success('Gemini AI integration configured!')
     } else {
-      log.warn('Gemini setup failed or cancelled.')
+      log.warn('Gemini setup was not completed. Run `geeto --setup-gemini` to try again.')
     }
     return
   }
@@ -202,7 +211,7 @@ const runInteractiveSetup = async (name: 'trello' | 'openrouter' | 'gemini' | 'g
     if (groqSetupSuccess) {
       log.success('Groq integration configured!')
     } else {
-      log.warn('Groq setup failed or cancelled.')
+      log.warn('Groq setup was not completed. Run `geeto --setup-groq` to try again.')
     }
     return
   }
@@ -211,9 +220,9 @@ const runInteractiveSetup = async (name: 'trello' | 'openrouter' | 'gemini' | 'g
     const { setupCodexConfigInteractive } = await import('../core/codex-sdk-setup.js')
     const codexSetupSuccess = await setupCodexConfigInteractive()
     if (codexSetupSuccess) {
-      log.success('Codex integration configured!')
+      log.success('OpenAI Codex integration configured!')
     } else {
-      log.warn('Codex setup failed or cancelled.')
+      log.warn('OpenAI Codex setup was not completed. Run `geeto --setup-codex` to try again.')
     }
     return
   }
@@ -223,7 +232,7 @@ const runInteractiveSetup = async (name: 'trello' | 'openrouter' | 'gemini' | 'g
   if (openRouterSetupSuccess) {
     log.success('OpenRouter integration configured!')
   } else {
-    log.warn('OpenRouter setup failed or cancelled.')
+    log.warn('OpenRouter setup was not completed. Run `geeto --setup-openrouter` to try again.')
   }
 }
 
@@ -231,11 +240,11 @@ const handlePrefixFormatSetting = async (): Promise<boolean | void> => {
   const config = getBranchStrategyConfig()
   const current = config?.prefixSeparator ?? '(auto-detect)'
 
-  const choice = await select(`Branch prefix format (current: ${current}):`, [
+  const choice = await select(`Choose branch prefix format (current: ${current}):`, [
     { label: 'Hash:  dev#branch-name', value: '#' },
     { label: 'Slash: dev/branch-name', value: '/' },
     { label: 'Auto-detect from existing branches', value: 'auto' },
-    { label: 'Back to settings menu', value: 'back' },
+    { label: 'Return to settings menu', value: 'back' },
   ])
 
   if (choice === 'back') return true
@@ -253,10 +262,10 @@ const handlePrefixFormatSetting = async (): Promise<boolean | void> => {
 }
 
 const handleSeparatorSetting = async (): Promise<boolean | void> => {
-  const separatorChoice = await select('Choose branch name separator:', [
+  const separatorChoice = await select('Choose separator for generated branch names:', [
     { label: 'Hyphen (kebab-case): my-branch-name', value: 'hyphen' },
     { label: 'Underscore (snake_case): my_branch_name', value: 'underscore' },
-    { label: 'Back to settings menu', value: 'back' },
+    { label: 'Return to settings menu', value: 'back' },
   ])
 
   if (separatorChoice === 'back') {
@@ -290,10 +299,10 @@ const handleProtectedBranchesSetting = async (): Promise<boolean | void> => {
   console.log(`${colors.gray}  (These branches are excluded from cleanup)${colors.reset}`)
   console.log('')
 
-  const action = await select('What would you like to do?', [
-    { label: 'Add branches', value: 'add' },
-    { label: 'Reset to defaults', value: 'reset' },
-    { label: 'Back to settings menu', value: 'back' },
+  const action = await select('Manage branches protected from cleanup:', [
+    { label: 'Add branches to protected list', value: 'add' },
+    { label: 'Restore default protected branches', value: 'reset' },
+    { label: 'Return to settings menu', value: 'back' },
   ])
 
   if (action === 'back') {
@@ -424,7 +433,7 @@ const syncOpenRouterModels = async (): Promise<void> => {
           }
 
           const selected = await multiSelect(
-            'Pick your favorite OpenRouter models:',
+            'Select OpenRouter models to keep in your favorites:',
             choices,
             defaults
           )
@@ -480,7 +489,7 @@ const syncOpenRouterModels = async (): Promise<void> => {
           }))
           const defaults = choices.map((c) => c.value)
           const selected = await multiSelect(
-            'Pick your favorite OpenRouter models (from saved list):',
+            'Select saved OpenRouter models to keep in your favorites:',
             choices,
             defaults
           )
@@ -583,7 +592,11 @@ const syncGeminiModels = async (): Promise<void> => {
         .map((c) => c.value)
     }
 
-    const selected = await multiSelect('Pick your favorite Gemini models:', choices, defaults)
+    const selected = await multiSelect(
+      'Select Gemini models to keep in your favorites:',
+      choices,
+      defaults
+    )
 
     if (!selected || selected.length === 0) {
       log.info('No models selected. Sync cancelled.')
@@ -657,7 +670,11 @@ const syncGroqModels = async (): Promise<void> => {
     ])
     const defaults = models.filter((m) => freeModels.has(m.value)).map((m) => m.value)
 
-    const selected = await multiSelect('Pick your favorite Groq models:', models, defaults)
+    const selected = await multiSelect(
+      'Select Groq models to keep in your favorites:',
+      models,
+      defaults
+    )
 
     if (!selected || selected.length === 0) {
       log.info('No models selected. Sync cancelled.')
@@ -682,14 +699,14 @@ const syncGroqModels = async (): Promise<void> => {
   }
 }
 
-// Sync Codex models (fetch from SDK & persist user favorites)
+// Sync OpenAI Codex models (fetch from SDK & persist user favorites)
 const syncCodexModels = async (): Promise<void> => {
   try {
     let sdkModule: unknown = null
     try {
       sdkModule = await import('../api/codex-sdk.js')
     } catch {
-      log.warn('Codex unavailable. Configure Codex first.')
+      log.warn('OpenAI Codex unavailable. Configure OpenAI Codex first.')
       return
     }
 
@@ -699,7 +716,7 @@ const syncCodexModels = async (): Promise<void> => {
     }
 
     if (!sdk || typeof sdk.getCodexModels !== 'function') {
-      log.warn('Codex unavailable. Configure Codex first.')
+      log.warn('OpenAI Codex unavailable. Configure OpenAI Codex first.')
       return
     }
 
@@ -710,18 +727,22 @@ const syncCodexModels = async (): Promise<void> => {
     }
 
     const spinner = new ScrambleProgress()
-    spinner.start(['Fetching Codex models...'])
+    spinner.start(['Fetching OpenAI Codex models...'])
     const models = (await sdk.getCodexModels()) as Array<{ label: string; value: string }> | null
     spinner.stop()
 
     if (!Array.isArray(models) || models.length === 0) {
-      log.warn('No Codex models found.')
+      log.warn('No OpenAI Codex models found.')
       return
     }
 
     const defaults = models.map((m) => m.value)
 
-    const selected = await multiSelect('Pick your favorite Codex models:', models, defaults)
+    const selected = await multiSelect(
+      'Select OpenAI Codex models to keep in your favorites:',
+      models,
+      defaults
+    )
 
     if (!selected || selected.length === 0) {
       log.info('No models selected. Sync cancelled.')
@@ -739,113 +760,57 @@ const syncCodexModels = async (): Promise<void> => {
     const outFile = path.join(outDir, 'codex-model.json')
     await fsModule.promises.writeFile(outFile, JSON.stringify(simple, null, 2))
 
-    log.success(`Saved ${simple.length} Codex model(s) to .geeto/codex-model.json`)
+    log.success(`Saved ${simple.length} OpenAI Codex model(s) to .geeto/codex-model.json`)
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : String(error)
-    log.warn(`Codex model sync failed: ${msg}`)
+    log.warn(`OpenAI Codex model sync failed: ${msg}`)
   }
 }
 
-// Sync Copilot models (fetch from SDK & persist user favorites)
-const syncCopilotModels = async (): Promise<void> => {
+const syncOpenCodeModels = async (): Promise<void> => {
   try {
-    let sdkModule: unknown = null
-    try {
-      sdkModule = await import('../api/copilot-sdk.js')
-    } catch {
-      log.warn('Copilot SDK unavailable. Configure Copilot first with --setup-copilot.')
+    const opencodeApi = await import('../api/opencode.js')
+    const models = await opencodeApi.getOpenCodeModels()
+    if (models.length === 0) {
+      log.warn('No OpenCode Zen models found. Configure OpenCode Zen first.')
       return
     }
 
-    const sdk = sdkModule as {
-      isAvailable?: () => Promise<boolean>
-      getAvailableModelChoices?: () => Promise<unknown>
-    }
-
-    if (!sdk || typeof sdk.getAvailableModelChoices !== 'function') {
-      log.warn('Copilot SDK unavailable. Configure Copilot first with --setup-copilot.')
-      return
-    }
-
-    if (typeof sdk.isAvailable === 'function') {
-      const ok = await sdk.isAvailable()
-      if (!ok) {
-        log.warn('Copilot is not available. Run --setup-copilot first.')
-        return
-      }
-    }
-
-    const spinner = new ScrambleProgress()
-    spinner.start(['Fetching Copilot models...'])
-    const detailed = (await sdk.getAvailableModelChoices()) as Array<Record<string, unknown>> | null
-    spinner.stop()
-
-    if (!Array.isArray(detailed) || detailed.length === 0) {
-      log.warn('No Copilot models found.')
-      return
-    }
-
-    const choices = detailed.map((d) => ({
-      label: String(d.label ?? d.name ?? d.value),
-      value: String(d.value ?? d.id),
-    }))
-
-    // Pre-select: use currently saved models if available, else recommended defaults
-    const fsModule = await import('node:fs')
-    const savedCopilotFile = path.join(process.cwd(), '.geeto', 'copilot-model.json')
-    let defaults: string[] = []
-    try {
-      const saved = JSON.parse(fsModule.readFileSync(savedCopilotFile, 'utf8')) as Array<{
-        value?: string
-      }>
-      defaults = saved.map((m) => String(m.value ?? '')).filter(Boolean)
-    } catch {
-      // No saved models — use recommended defaults
-      const recommended = ['claude-sonnet-4', 'claude-haiku-4.5', 'gpt-4.1', 'gpt-5-mini']
-      defaults = choices
-        .filter((c) => recommended.some((r) => c.value.toLowerCase().includes(r)))
-        .map((c) => c.value)
-    }
-
-    const selected = await multiSelect('Pick your favorite Copilot models:', choices, defaults)
-
+    const freeModelValues = models.filter((model) => model.isFree).map((model) => model.value)
+    const selected = await multiSelect(
+      'Select OpenCode Zen models to keep in your favorites:',
+      models,
+      freeModelValues
+    )
     if (!selected || selected.length === 0) {
       log.info('No models selected. Sync cancelled.')
       return
     }
 
-    // Build model list — keep full SDK labels (with token info), just re-number
-    const simple = selected.map((val, idx) => {
-      const detail = detailed.find((d) => String(d.value ?? d.id) === val)
-      const rawLabel = String(detail?.label ?? detail?.name ?? val)
-      const label = rawLabel.replace(/^\s*\d+\.\s*/, `${idx + 1}. `)
-      return {
-        label,
-        value: val,
-      }
-    })
-
-    // Save to copilot-model.json
+    const fsModule = await import('node:fs')
     const outDir = path.join(process.cwd(), '.geeto')
     await fsModule.promises.mkdir(outDir, { recursive: true })
-    const outCopilotFile = path.join(outDir, 'copilot-model.json')
-    await fsModule.promises.writeFile(outCopilotFile, JSON.stringify(simple, null, 2))
-
-    log.success(`Saved ${simple.length} Copilot model(s) to .geeto/copilot-model.json`)
+    const outFile = path.join(outDir, 'opencode-model.json')
+    const simple = selected.map((value, index) => ({
+      label: `${index + 1}. ${models.find((model) => model.value === value)?.label ?? value}`,
+      value,
+    }))
+    await fsModule.promises.writeFile(outFile, JSON.stringify(simple, null, 2))
+    log.success(`Saved ${simple.length} OpenCode Zen model(s) to .geeto/opencode-model.json`)
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : String(error)
-    log.warn(`Copilot model sync failed: ${msg}`)
+    log.warn(`OpenCode Zen model sync failed: ${msg}`)
   }
 }
 
 const handleModelResetSetting = async (): Promise<boolean | void> => {
-  const resetChoice = await select('Saved AI models — choose provider:', [
-    { label: 'GitHub Copilot', value: 'copilot' },
+  const resetChoice = await select('Which provider model favorites should be updated?', [
     { label: 'Gemini', value: 'gemini' },
     { label: 'OpenRouter', value: 'openrouter' },
     { label: 'Groq', value: 'groq' },
-    { label: 'Codex', value: 'codex' },
-    { label: 'Back to settings menu', value: 'back' },
+    { label: 'OpenAI Codex', value: 'codex' },
+    { label: 'OpenCode Zen', value: 'opencode-zen' },
+    { label: 'Return to settings menu', value: 'back' },
   ])
 
   if (resetChoice === 'back') {
@@ -859,14 +824,14 @@ const handleModelResetSetting = async (): Promise<boolean | void> => {
     if (resetChoice === 'gemini') {
       await syncGeminiModels()
     }
-    if (resetChoice === 'copilot') {
-      await syncCopilotModels()
-    }
     if (resetChoice === 'groq') {
       await syncGroqModels()
     }
     if (resetChoice === 'codex') {
       await syncCodexModels()
+    }
+    if (resetChoice === 'opencode-zen') {
+      await syncOpenCodeModels()
     }
 
     log.success('Model sync completed!')
@@ -885,21 +850,21 @@ const handleChangeModelSetting = async (): Promise<boolean | void> => {
   const { chooseModelForProvider } = await import('../utils/git-ai.js')
   const provOptions = [
     { label: 'Gemini', value: 'gemini' },
-    { label: 'GitHub Copilot', value: 'copilot' },
     { label: 'OpenRouter', value: 'openrouter' },
     { label: 'Groq', value: 'groq' },
-    { label: 'Codex', value: 'codex' },
+    { label: 'OpenAI Codex', value: 'codex' },
+    { label: 'OpenCode Zen', value: 'opencode-zen' },
     { label: 'Back to settings menu', value: 'back' },
   ]
 
-  const chosenProv = await select('Choose provider to change model for:', provOptions)
+  const chosenProv = await select('Which provider should use a different model?', provOptions)
   if (chosenProv === 'back') {
     // User explicitly asked to go back to settings menu
     return true
   }
 
   const picked = await chooseModelForProvider(
-    chosenProv as 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'codex',
+    chosenProv as 'gemini' | 'openrouter' | 'groq' | 'codex' | 'opencode-zen',
     undefined,
     'Back to settings menu'
   )
@@ -924,37 +889,35 @@ const handleChangeModelSetting = async (): Promise<boolean | void> => {
     targetBranch: '',
     currentBranch: '',
     timestamp: now,
-    aiProvider: chosenProv as 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'codex' | 'manual',
-    copilotModel: undefined,
+    aiProvider: chosenProv as 'gemini' | 'openrouter' | 'groq' | 'codex' | 'manual',
     openrouterModel: undefined,
     geminiModel: undefined,
+    groqModel: undefined,
     codexModel: undefined,
+    opencodeModel: undefined,
   }
 
-  base.aiProvider = chosenProv as 'gemini' | 'copilot' | 'openrouter' | 'groq' | 'codex' | 'manual'
+  base.aiProvider = chosenProv as
+    | 'gemini'
+    | 'openrouter'
+    | 'groq'
+    | 'codex'
+    | 'opencode-zen'
+    | 'manual'
 
   switch (chosenProv) {
-    case 'copilot': {
-      base.copilotModel = picked as string
-      base.openrouterModel = undefined
-      base.geminiModel = undefined
-      break
-    }
     case 'openrouter': {
       base.openrouterModel = picked as string
-      base.copilotModel = undefined
       base.geminiModel = undefined
       break
     }
     case 'gemini': {
       base.geminiModel = picked as string
-      base.copilotModel = undefined
       base.openrouterModel = undefined
       break
     }
     case 'groq': {
       base.groqModel = picked as string
-      base.copilotModel = undefined
       base.openrouterModel = undefined
       base.geminiModel = undefined
       base.codexModel = undefined
@@ -962,10 +925,18 @@ const handleChangeModelSetting = async (): Promise<boolean | void> => {
     }
     case 'codex': {
       base.codexModel = picked as string
-      base.copilotModel = undefined
       base.openrouterModel = undefined
       base.geminiModel = undefined
       base.groqModel = undefined
+      base.opencodeModel = undefined
+      break
+    }
+    case 'opencode-zen': {
+      base.opencodeModel = picked as string
+      base.openrouterModel = undefined
+      base.geminiModel = undefined
+      base.groqModel = undefined
+      base.codexModel = undefined
       break
     }
     default: {
@@ -978,47 +949,16 @@ const handleChangeModelSetting = async (): Promise<boolean | void> => {
   saveState(base)
   const providerLabel =
     {
-      gemini: 'Gemini',
-      copilot: 'Copilot',
-      openrouter: 'OpenRouter',
-      groq: 'Groq',
-      codex: 'Codex',
+      'gemini': 'Gemini',
+      'openrouter': 'OpenRouter',
+      'groq': 'Groq',
+      'codex': 'OpenAI Codex',
+      'opencode-zen': 'OpenCode Zen',
     }[chosenProv] ?? chosenProv
   log.success(`Set ${providerLabel} model to: ${picked}`)
   // Done; do not go back to settings menu
   return false
 }
-const handleCopilotSetting = async (): Promise<boolean | void> => {
-  const { isAvailable } = await import('../api/copilot-sdk.js')
-  const hasConfig = await isAvailable()
-
-  if (!hasConfig) {
-    log.info('Setting up GitHub Copilot integration...')
-    const { setupGitHubCopilotInteractive } = await import('../core/copilot-setup.js')
-    await setupGitHubCopilotInteractive()
-    return false
-  }
-
-  const action = await select(
-    'GitHub Copilot integration is already configured. What would you like to do?',
-    [
-      { label: 'Reconfigure (re-authenticate)', value: 'reconfigure' },
-      { label: 'Back to settings menu', value: 'back' },
-    ]
-  )
-
-  if (action === 'reconfigure') {
-    log.info('Reconfiguring GitHub Copilot integration...')
-    const { setupGitHubCopilotInteractive } = await import('../core/copilot-setup.js')
-    await setupGitHubCopilotInteractive(true)
-  }
-  if (action === 'back') {
-    return true
-  }
-
-  return false
-}
-
 const handleGeminiSetting = async (): Promise<boolean | void> => {
   const hasConfig = hasGeminiConfig()
 
@@ -1030,14 +970,11 @@ const handleGeminiSetting = async (): Promise<boolean | void> => {
     return false
   }
 
-  const action = await select(
-    'Gemini AI integration is already configured. What would you like to do?',
-    [
-      { label: 'Reconfigure (replace existing config)', value: 'reconfigure' },
-      { label: 'Remove configuration', value: 'remove' },
-      { label: 'Back to settings menu', value: 'back' },
-    ]
-  )
+  const action = await select('Gemini AI integration is configured. Choose a setup action:', [
+    { label: 'Reconfigure (replace existing config)', value: 'reconfigure' },
+    { label: 'Remove configuration', value: 'remove' },
+    { label: 'Back to settings menu', value: 'back' },
+  ])
 
   switch (action) {
     case 'reconfigure': {
@@ -1048,12 +985,14 @@ const handleGeminiSetting = async (): Promise<boolean | void> => {
       if (setupSuccess) {
         log.success('Gemini AI integration reconfigured!')
       } else {
-        log.warn('Gemini setup failed or cancelled.')
+        log.warn('Gemini setup was not completed. Run `geeto --setup-gemini` to try again.')
       }
       break
     }
     case 'remove': {
-      const confirmRemove = confirm('Are you sure you want to remove Gemini configuration?')
+      const confirmRemove = confirm(
+        'Remove the saved Gemini API key and configuration from ~/.geeto?'
+      )
       if (confirmRemove) {
         if (removeConfigFile('gemini')) {
           log.success('Gemini configuration removed!')
@@ -1080,14 +1019,11 @@ const handleTrelloSetting = async (): Promise<boolean | void> => {
     return false
   }
 
-  const action = await select(
-    'Trello integration is already configured. What would you like to do?',
-    [
-      { label: 'Reconfigure (replace existing config)', value: 'reconfigure' },
-      { label: 'Remove configuration', value: 'remove' },
-      { label: 'Back to settings menu', value: 'back' },
-    ]
-  )
+  const action = await select('Trello integration is configured. Choose a setup action:', [
+    { label: 'Reconfigure (replace existing config)', value: 'reconfigure' },
+    { label: 'Remove configuration', value: 'remove' },
+    { label: 'Back to settings menu', value: 'back' },
+  ])
 
   if (action === 'reconfigure') {
     log.info('Reconfiguring Trello integration...')
@@ -1100,10 +1036,10 @@ const handleTrelloSetting = async (): Promise<boolean | void> => {
     if (setupSuccess) {
       log.success('Trello integration reconfigured!')
     } else {
-      log.warn('Trello setup failed or cancelled.')
+      log.warn('Trello setup was not completed. Run `geeto --setup-trello` to try again.')
     }
   } else if (action === 'remove') {
-    const confirmRemove = confirm('Are you sure you want to remove Trello configuration?')
+    const confirmRemove = confirm('Remove the saved Trello credentials from ~/.geeto?')
     if (!confirmRemove) {
       return false
     }
@@ -1130,14 +1066,11 @@ const handleOpenRouterSetting = async (): Promise<boolean | void> => {
     return false
   }
 
-  const action = await select(
-    'OpenRouter integration is already configured. What would you like to do?',
-    [
-      { label: 'Reconfigure (replace existing config)', value: 'reconfigure' },
-      { label: 'Remove configuration', value: 'remove' },
-      { label: 'Back to settings menu', value: 'back' },
-    ]
-  )
+  const action = await select('OpenRouter integration is configured. Choose a setup action:', [
+    { label: 'Reconfigure (replace existing config)', value: 'reconfigure' },
+    { label: 'Remove configuration', value: 'remove' },
+    { label: 'Back to settings menu', value: 'back' },
+  ])
 
   switch (action) {
     case 'reconfigure': {
@@ -1148,7 +1081,9 @@ const handleOpenRouterSetting = async (): Promise<boolean | void> => {
       break
     }
     case 'remove': {
-      const confirmRemove = confirm('Are you sure you want to remove OpenRouter configuration?')
+      const confirmRemove = confirm(
+        'Remove the saved OpenRouter API key and configuration from ~/.geeto?'
+      )
       if (!confirmRemove) return false
       if (removeConfigFile('openrouter')) {
         log.success('OpenRouter configuration removed!')
@@ -1175,14 +1110,11 @@ const handleGroqSetting = async (): Promise<boolean | void> => {
     return false
   }
 
-  const action = await select(
-    'Groq integration is already configured. What would you like to do?',
-    [
-      { label: 'Reconfigure (replace existing config)', value: 'reconfigure' },
-      { label: 'Remove configuration', value: 'remove' },
-      { label: 'Back to settings menu', value: 'back' },
-    ]
-  )
+  const action = await select('Groq integration is configured. Choose a setup action:', [
+    { label: 'Reconfigure (replace existing config)', value: 'reconfigure' },
+    { label: 'Remove configuration', value: 'remove' },
+    { label: 'Back to settings menu', value: 'back' },
+  ])
 
   switch (action) {
     case 'reconfigure': {
@@ -1193,7 +1125,9 @@ const handleGroqSetting = async (): Promise<boolean | void> => {
       break
     }
     case 'remove': {
-      const confirmRemove = confirm('Are you sure you want to remove Groq configuration?')
+      const confirmRemove = confirm(
+        'Remove the saved Groq API key and configuration from ~/.geeto?'
+      )
       if (!confirmRemove) return false
       if (removeConfigFile('groq')) {
         log.success('Groq configuration removed!')
@@ -1209,7 +1143,7 @@ const handleGroqSetting = async (): Promise<boolean | void> => {
   return false
 }
 
-const handleCodexSetting = async (): Promise<boolean | void> => {
+export const handleCodexSetting = async (): Promise<boolean | void> => {
   const { hasCodexConfig } = await import('../utils/config.js')
   const hasConfig = hasCodexConfig()
 
@@ -1218,30 +1152,27 @@ const handleCodexSetting = async (): Promise<boolean | void> => {
     return false
   }
 
-  const action = await select(
-    'Codex integration is already configured. What would you like to do?',
-    [
-      { label: 'Reconfigure (check local installation)', value: 'reconfigure' },
-      { label: 'Remove configuration', value: 'remove' },
-      { label: 'Back to settings menu', value: 'back' },
-    ]
-  )
+  const action = await select('OpenAI Codex integration is configured. Choose a setup action:', [
+    { label: 'Reconfigure (check local installation)', value: 'reconfigure' },
+    { label: 'Remove configuration', value: 'remove' },
+    { label: 'Back to settings menu', value: 'back' },
+  ])
 
   switch (action) {
     case 'reconfigure': {
-      log.info('Reconfiguring Codex integration...')
-      if (removeConfigFile('codex')) log.info('Cleared existing Codex configuration')
+      log.info('Reconfiguring OpenAI Codex integration...')
+      if (removeConfigFile('codex')) log.info('Cleared existing OpenAI Codex configuration')
       await runInteractiveSetup('codex')
-      log.success('Codex integration reconfigured!')
+      log.success('OpenAI Codex integration reconfigured!')
       break
     }
     case 'remove': {
-      const confirmRemove = confirm('Are you sure you want to remove Codex configuration?')
+      const confirmRemove = confirm('Remove the saved OpenAI Codex configuration from ~/.geeto?')
       if (!confirmRemove) return false
       if (removeConfigFile('codex')) {
-        log.success('Codex configuration removed!')
+        log.success('OpenAI Codex configuration removed!')
       } else {
-        log.info('No Codex configuration found to remove')
+        log.info('No OpenAI Codex configuration found to remove')
       }
       break
     }
@@ -1252,8 +1183,40 @@ const handleCodexSetting = async (): Promise<boolean | void> => {
   return false
 }
 
+const handleOpenCodeSetting = async (): Promise<boolean | void> => {
+  const { ensureOpenCode } = await import('../core/setup.js')
+  const ready = await ensureOpenCode()
+  if (!ready) return false
+
+  const access = await select('OpenCode Zen access:', [
+    { label: 'Use free models only', value: 'free' },
+    { label: 'Enter OpenCode Zen API key', value: 'key' },
+  ])
+
+  const opencodeApi = await import('../api/opencode.js')
+  if (access === 'key') {
+    const apiKey = askQuestion('Enter OpenCode Zen API key: ').trim()
+    if (!apiKey) {
+      log.info('No API key entered; free OpenCode Zen models remain available.')
+      return false
+    }
+
+    const valid = await opencodeApi.setOpenCodeZenApiKey(apiKey)
+    if (valid) {
+      log.success('OpenCode Zen API key is valid. All OpenCode Zen models are available.')
+    } else {
+      log.warn('OpenCode Zen API key is invalid. Only free models are available.')
+    }
+    return false
+  }
+
+  opencodeApi.useFreeOpenCodeZenModels()
+  log.success('OpenCode Zen ready with free models.')
+  return false
+}
+
 const handleSaveGlobalAiConfig = (): boolean | void => {
-  const providers = ['gemini', 'openrouter', 'groq', 'codex'] as const
+  const providers = ['gemini', 'openrouter', 'groq', 'codex', 'github', 'gitlab'] as const
   const local = providers.filter((p) => isConfigLocal(p))
 
   if (local.length === 0) {
@@ -1305,7 +1268,7 @@ const handleCommitStyleSetting = async (): Promise<boolean | void> => {
         { label: 'Technical  (Precise and specific)', value: 'technical' },
         { label: 'Concise  (Short and compact)', value: 'concise' },
         { label: 'Descriptive  (Natural and explanatory)', value: 'descriptive' },
-        { label: 'Back', value: 'back' },
+        { label: 'Return to commit settings', value: 'back' },
       ])
       if (toneChoice === 'back') continue
 
@@ -1325,7 +1288,7 @@ const handleCommitStyleSetting = async (): Promise<boolean | void> => {
           { label: '50 chars  (conventional commits standard)', value: '50' },
           { label: '72 chars  (git standard)', value: '72' },
           { label: '100 chars  (modern projects)', value: '100' },
-          { label: 'Back', value: 'back' },
+          { label: 'Return to commit settings', value: 'back' },
         ]
       )
       if (lengthChoice === 'back') continue
@@ -1343,7 +1306,7 @@ const handleCommitStyleSetting = async (): Promise<boolean | void> => {
       const bodyChoice = await select('Body style:', [
         { label: 'Multiline  (subject + body with blank line)', value: 'multiline' },
         { label: 'Singleline  (subject only, no body)', value: 'singleline' },
-        { label: 'Back', value: 'back' },
+        { label: 'Return to commit settings', value: 'back' },
       ])
       if (bodyChoice === 'back') continue
 
@@ -1360,23 +1323,24 @@ const handleCommitStyleSetting = async (): Promise<boolean | void> => {
 
 export const showSettingsMenu = async () => {
   while (true) {
-    log.info('Settings Menu')
+    log.info('Geeto settings')
 
-    const hasGlobalConfig = globalProviders().length > 0
     const hasLocalGeetoFolder = existsSync(configDirPath())
-    const hasLocalAiConfig = ['gemini', 'openrouter', 'groq', 'codex'].some((p) => isConfigLocal(p))
+    const hasLocalAiConfig = ['gemini', 'openrouter', 'groq', 'codex', 'github', 'gitlab'].some(
+      (p) => isConfigLocal(p)
+    )
 
     const menuOptions: Array<{ label: string; value: string; disabled?: boolean }> = [
-      { label: 'AI', value: '_ai' },
-      { label: 'Branch', value: '_branch' },
-      { label: 'Commit', value: '_commit' },
+      { label: 'AI provider & models', value: '_ai' },
+      { label: 'Branch naming', value: '_branch' },
+      { label: 'Commit messages', value: '_commit' },
 
-      { label: 'Setup', value: '_setup' },
-      { label: 'System', value: '_system' },
-      { label: 'Back', value: 'back' },
+      { label: 'Integrations & credentials', value: '_setup' },
+      { label: 'System & global config', value: '_system' },
+      { label: 'Return to main menu', value: 'back' },
     ]
 
-    const settingChoice = await select('Settings:', menuOptions)
+    const settingChoice = await select('What do you want to configure?', menuOptions)
 
     if (settingChoice === 'back') {
       break
@@ -1384,12 +1348,12 @@ export const showSettingsMenu = async () => {
 
     if (settingChoice === '_branch') {
       const branchConfig = getBranchStrategyConfig()
-      const branchChoice = await select('Branch settings:', [
-        { label: 'Branch prefix  (dev#name / dev/name)', value: 'prefix' },
-        { label: 'Branch separator  (hyphen / underscore)', value: 'separator' },
-        { label: `Max words  (${branchConfig?.maxWords ?? 3})`, value: 'max-words' },
-        { label: 'Protected branches', value: 'protected' },
-        { label: 'Back', value: 'back' },
+      const branchChoice = await select('Choose a branch naming setting:', [
+        { label: 'Prefix format  (dev#name / dev/name)', value: 'prefix' },
+        { label: 'Name separator  (hyphen / underscore)', value: 'separator' },
+        { label: `Maximum words  (current: ${branchConfig?.maxWords ?? 3})`, value: 'max-words' },
+        { label: 'Protected branches for cleanup', value: 'protected' },
+        { label: 'Return to settings', value: 'back' },
       ])
       if (branchChoice === 'back') continue
 
@@ -1408,7 +1372,7 @@ export const showSettingsMenu = async () => {
             { label: '1 word', value: '1' },
             { label: '2 words', value: '2' },
             { label: '3 words', value: '3' },
-            { label: 'Back', value: 'back' },
+            { label: 'Return to branch settings', value: 'back' },
           ]
         )
         if (wordChoice === 'back') continue
@@ -1426,10 +1390,10 @@ export const showSettingsMenu = async () => {
     }
 
     if (settingChoice === '_ai') {
-      const aiChoice = await select('AI settings:', [
-        { label: 'Active model  (switch provider & model)', value: 'change-model' },
-        { label: 'Saved models  (manage favorites per provider)', value: 'models' },
-        { label: 'Back', value: 'back' },
+      const aiChoice = await select('Choose an AI setting:', [
+        { label: 'Change active provider and model', value: 'change-model' },
+        { label: 'Manage saved model favorites', value: 'models' },
+        { label: 'Return to settings', value: 'back' },
       ])
       if (aiChoice === 'back') continue
 
@@ -1451,21 +1415,19 @@ export const showSettingsMenu = async () => {
     }
 
     if (settingChoice === '_setup') {
-      const setupChoice = await select('Setup:', [
-        { label: 'GitHub Copilot', value: 'copilot' },
+      const setupChoice = await select('Choose an integration or credential to configure:', [
         { label: 'Gemini', value: 'gemini' },
         { label: 'OpenRouter', value: 'openrouter' },
         { label: 'Groq', value: 'groq' },
-        { label: 'Codex', value: 'codex' },
-        { label: 'Trello', value: 'trello' },
-        { label: 'Back', value: 'back' },
+        { label: 'OpenAI Codex', value: 'codex' },
+        { label: 'OpenCode Zen', value: 'opencode-zen' },
+        { label: 'GitHub access', value: 'github' },
+        { label: 'GitLab access', value: 'gitlab' },
+        { label: 'Trello integration', value: 'trello' },
+        { label: 'Return to settings', value: 'back' },
       ])
       if (setupChoice === 'back') continue
 
-      if (setupChoice === 'copilot') {
-        const back = await handleCopilotSetting()
-        if (back) continue
-      }
       if (setupChoice === 'gemini') {
         const back = await handleGeminiSetting()
         if (back) continue
@@ -1482,6 +1444,18 @@ export const showSettingsMenu = async () => {
         const back = await handleCodexSetting()
         if (back) continue
       }
+      if (setupChoice === 'opencode-zen') {
+        const back = await handleOpenCodeSetting()
+        if (back) continue
+      }
+      if (setupChoice === 'github') {
+        const { setupGithubConfigInteractive } = await import('../core/github-setup.js')
+        setupGithubConfigInteractive()
+      }
+      if (setupChoice === 'gitlab') {
+        const { setupGitlabConfigInteractive } = await import('../core/gitlab-setup.js')
+        setupGitlabConfigInteractive()
+      }
       if (setupChoice === 'trello') {
         const back = await handleTrelloSetting()
         if (back) continue
@@ -1491,8 +1465,8 @@ export const showSettingsMenu = async () => {
 
     if (settingChoice === '_system') {
       const systemOptions: Array<{ label: string; value: string }> = [
-        { label: 'Installation info', value: 'where' },
-        { label: 'Uninstall geeto', value: 'uninstall' },
+        { label: 'Check installation details', value: 'where' },
+        { label: 'Uninstall Geeto', value: 'uninstall' },
       ]
       if (hasLocalGeetoFolder && hasLocalAiConfig) {
         systemOptions.push({
@@ -1500,12 +1474,12 @@ export const showSettingsMenu = async () => {
           value: 'save-global',
         })
       }
-      if (hasLocalGeetoFolder && hasGlobalConfig) {
-        systemOptions.push({ label: 'Manage global config (~/.geeto/)', value: 'global-config' })
-      }
-      systemOptions.push({ label: 'Back', value: 'back' })
+      systemOptions.push(
+        { label: 'Manage global config (~/.geeto/)', value: 'global-config' },
+        { label: 'Return to settings', value: 'back' }
+      )
 
-      const systemChoice = await select('System:', systemOptions)
+      const systemChoice = await select('Choose a system setting:', systemOptions)
       if (systemChoice === 'back') continue
 
       switch (systemChoice) {
@@ -1562,10 +1536,6 @@ export const showSettingsMenu = async () => {
       const back = await handleChangeModelSetting()
       if (back) continue
     }
-    if (settingChoice === 'copilot') {
-      const back = await handleCopilotSetting()
-      if (back) continue
-    }
     if (settingChoice === 'gemini') {
       const back = await handleGeminiSetting()
       if (back) {
@@ -1592,6 +1562,12 @@ export const showSettingsMenu = async () => {
     }
     if (settingChoice === 'codex') {
       const back = await handleCodexSetting()
+      if (back) {
+        continue
+      }
+    }
+    if (settingChoice === 'opencode-zen') {
+      const back = await handleOpenCodeSetting()
       if (back) {
         continue
       }
@@ -1623,9 +1599,9 @@ export {
   handleProtectedBranchesSetting,
   handleModelResetSetting,
   handleChangeModelSetting,
-  handleCopilotSetting,
   handleGeminiSetting,
   handleOpenRouterSetting,
   handleGroqSetting,
+  handleOpenCodeSetting,
   handleTrelloSetting,
 }

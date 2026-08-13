@@ -26,12 +26,10 @@ export const setupGitlabConfigInteractive = (): boolean => {
     // fall through to interactive setup
   }
 
-  log.info('GitLab integration is not configured for this project.\n')
-  log.info('To enable GitLab features (create MR, issues), you need:')
-  log.info('  1. A Personal Access Token (PAT) with api scope')
-  log.info('  2. Or GitLab CLI (glab) already authenticated\n')
+  log.info('Connect GitLab to create merge requests and issues from Geeto.\n')
+  log.info('Use a Personal Access Token with api scope, or an authenticated GitLab CLI.\n')
 
-  const shouldSetup = confirm('Setup GitLab integration now?')
+  const shouldSetup = confirm('Connect GitLab now?')
   if (!shouldSetup) return false
 
   if (process.stdin.isTTY) process.stdin.setRawMode(false)
@@ -41,14 +39,14 @@ export const setupGitlabConfigInteractive = (): boolean => {
 
   if (detectedToken) {
     log.success('Detected GitLab token from `glab` CLI!')
-    const useDetected = confirm('Use this token?')
+    const useDetected = confirm('Use the token detected from the `glab` CLI?')
     if (useDetected) token = detectedToken
   }
 
   if (!token) {
     log.info('Create a token at: Settings → Access Tokens')
     log.info('Required scopes: api (Full access to the API)\n')
-    const openNow = confirm('Open token creation page in your browser?')
+    const openNow = confirm('Open the GitLab token page in your browser now?')
     if (openNow) {
       const opened = openBrowser('https://gitlab.com/-/user_settings/personal_access_tokens')
       if (opened) log.success('Opened browser')

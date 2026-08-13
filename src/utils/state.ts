@@ -9,10 +9,11 @@ import { ensureGeetoIgnored } from './config.js'
 import { STEP } from '../core/constants.js'
 
 const STATE_FILE = '.geeto/geeto-state.json'
-const AI_PROVIDERS = new Set(['gemini', 'copilot', 'openrouter', 'groq', 'codex', 'manual'])
+const AI_PROVIDERS = new Set(['gemini', 'openrouter', 'groq', 'codex', 'opencode-zen', 'manual'])
 
 const normalizeState = (state: GeetoState): GeetoState => {
-  const aiProvider = state.aiProvider?.toLowerCase()
+  const rawProvider = state.aiProvider?.toLowerCase()
+  const aiProvider = rawProvider === 'opencode' ? 'opencode-zen' : rawProvider
   return {
     ...state,
     aiProvider: AI_PROVIDERS.has(aiProvider ?? '')
@@ -64,11 +65,11 @@ export const preserveProviderState = (state: GeetoState): void => {
       currentBranch: state.currentBranch ?? '',
       timestamp: new Date().toISOString(),
       aiProvider: state.aiProvider,
-      copilotModel: state.copilotModel,
       openrouterModel: state.openrouterModel,
       geminiModel: state.geminiModel,
       groqModel: state.groqModel,
       codexModel: state.codexModel,
+      opencodeModel: state.opencodeModel,
     }
 
     // Reuse save logic to ensure .geeto exists and is ignored
@@ -76,21 +77,4 @@ export const preserveProviderState = (state: GeetoState): void => {
   } catch {
     // Ignore errors
   }
-}
-
-/**
- * Get human-readable step name
- */
-export const getStepName = (step: number): string => {
-  const stepNames: Record<number, string> = {
-    0: 'Initial',
-    1: 'Staging completed',
-    2: 'Branch created',
-    3: 'Commit completed',
-    4: 'Push completed',
-    5: 'Merge completed',
-    6: 'Cleanup',
-    7: 'Done',
-  }
-  return stepNames[step] ?? 'Unknown'
 }

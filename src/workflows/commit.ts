@@ -809,6 +809,15 @@ export const handleCommitWorkflow = async (
         break
       }
 
+      if (!extractCommitTitle(normalizeAIOutput(commitMessage))) {
+        log.warn(
+          'AI returned a non-commit response. Choose another model or enter a commit message manually.'
+        )
+        initialAiResult = null
+        previousAiResult = null
+        continue
+      }
+
       const contextLimitDetected = isContextLimitFailure(commitMessage)
 
       // Persist AI suggestion for commit so user can inspect/raw and we can show a short suggested line

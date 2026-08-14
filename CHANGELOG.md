@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.14.3](https://github.com/IDNCraft/geeto/compare/v0.14.2...v0.14.3) (2026-08-14)
+
+### Bug Fixes
+
+* fix(ai): provision isolated runtimes and guard model settings ([e6b1cd8](https://github.com/IDNCraft/geeto/commit/e6b1cd8))
+
 ## [0.14.2](https://github.com/IDNCraft/geeto/compare/v0.14.1...v0.14.2) (2026-08-13)
 
 ### Bug Fixes

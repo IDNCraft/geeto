@@ -1,5 +1,16 @@
 # Releases
 
+## v0.14.4 — August 14, 2026
+
+### What's New?
+
+#### Bug Fixes
+
+- Allow unavailable AI providers to be configured during model selection
+- Improve runtime isolation and prevent invalid model settings
+
+---
+
 ## v0.14.3 — August 14, 2026
 
 ### What's New?

@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.14.4](https://github.com/IDNCraft/geeto/compare/v0.14.3...v0.14.4) (2026-08-14)
+
+### Bug Fixes
+
+* fix(settings): configure unavailable providers during model selection ([e7d8e26](https://github.com/IDNCraft/geeto/commit/e7d8e26))
+* fix(ai): provision isolated runtimes and guard model settings (#77) ([a582c43](https://github.com/IDNCraft/geeto/commit/a582c43))
+
 ## [0.14.3](https://github.com/IDNCraft/geeto/compare/v0.14.2...v0.14.3) (2026-08-14)
 
 ### Bug Fixes

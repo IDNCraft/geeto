@@ -25,7 +25,7 @@
     "semantic_hash": "352da9e97b9ac355171696febf1b124e"
   },
   "package.json": {
-    "mtime": 1786679511.3737555,
+    "mtime": 1786683254.8513987,
     "ast_hash": "4d13d0ff971e229728edb21b1f0ac5eb",
     "semantic_hash": "4d13d0ff971e229728edb21b1f0ac5eb"
   },
@@ -40,7 +40,7 @@
     "semantic_hash": "4be77a1e5c62348fe9da50b64fd98a1b"
   },
   "scripts/install-local.sh": {
-    "mtime": 1786678888.032138,
+    "mtime": 1786683254.8517694,
     "ast_hash": "c852ea2413f943c9cce64773372e3531",
     "semantic_hash": "c852ea2413f943c9cce64773372e3531"
   },
@@ -50,7 +50,7 @@
     "semantic_hash": "8b7d48a43c1bf6e15328b6ee19b0eb8f"
   },
   "src/api/codex-sdk.ts": {
-    "mtime": 1786679184.614845,
+    "mtime": 1786683254.8523824,
     "ast_hash": "8dd89f39ef1cd9983ee8cc945e408d74",
     "semantic_hash": "8dd89f39ef1cd9983ee8cc945e408d74"
   },
@@ -89,6 +89,11 @@
     "ast_hash": "59ed34a4e784419167fcd2aeaf943ac4",
     "semantic_hash": "59ed34a4e784419167fcd2aeaf943ac4"
   },
+  "src/api/opencode.ts": {
+    "mtime": 1786683254.8527753,
+    "ast_hash": "a1780aa93c2e9834ee472a34e5d454c0",
+    "semantic_hash": "a1780aa93c2e9834ee472a34e5d454c0"
+  },
   "src/api/openrouter-sdk.ts": {
     "mtime": 1784013571.826436,
     "ast_hash": "c189a9ac4a3feb899a94c365f88d9162",
@@ -120,7 +125,7 @@
     "semantic_hash": "752f2018220a6194649f53dacce45d9e"
   },
   "src/core/codex-sdk-setup.ts": {
-    "mtime": 1786679184.6148298,
+    "mtime": 1786683254.8535316,
     "ast_hash": "34b8ac56e1915aec122c7e51e6c34d79",
     "semantic_hash": "34b8ac56e1915aec122c7e51e6c34d79"
   },
@@ -155,7 +160,7 @@
     "semantic_hash": "86c3549d8c6b49c53bbc6fa59e79bb79"
   },
   "src/core/setup.ts": {
-    "mtime": 1786678888.1633825,
+    "mtime": 1786683254.8541856,
     "ast_hash": "bd50939792aa5ad241b1119038bd7174",
     "semantic_hash": "bd50939792aa5ad241b1119038bd7174"
   },
@@ -280,7 +285,7 @@
     "semantic_hash": "e30eeb95955eec865443f2b5a7cac26c"
   },
   "src/utils/prompts-embedded.ts": {
-    "mtime": 1786682764.1965344,
+    "mtime": 1786683267.56442,
     "ast_hash": "9ce5b6a8522d74002a1a4b112112b4f9",
     "semantic_hash": "9ce5b6a8522d74002a1a4b112112b4f9"
   },
@@ -295,7 +300,7 @@
     "semantic_hash": "700ecfa926f0da637bbab1a857e84957"
   },
   "src/utils/state.ts": {
-    "mtime": 1786682301.5343826,
+    "mtime": 1786683254.8545816,
     "ast_hash": "228cf59ca5cc1e8051fea966b0e21324",
     "semantic_hash": "228cf59ca5cc1e8051fea966b0e21324"
   },
@@ -310,7 +315,7 @@
     "semantic_hash": "53587c1c1f70fd44ca8ccdd6f0b719ee"
   },
   "src/version.ts": {
-    "mtime": 1786679441.8296006,
+    "mtime": 1786683254.854839,
     "ast_hash": "14d21310da22436496b82d4f8505ebe5",
     "semantic_hash": "14d21310da22436496b82d4f8505ebe5"
   },
@@ -360,7 +365,7 @@
     "semantic_hash": "590ef01cef2e620e40ce8ae7d4bdb49d"
   },
   "src/workflows/commit.ts": {
-    "mtime": 1786680834.194265,
+    "mtime": 1786683254.8551724,
     "ast_hash": "37a0427d527e0f1a1a66e5092ed9a169",
     "semantic_hash": "37a0427d527e0f1a1a66e5092ed9a169"
   },
@@ -480,7 +485,7 @@
     "semantic_hash": "bff62842ef9eb4058379e3e038aaf331"
   },
   "src/workflows/settings.ts": {
-    "mtime": 1786683072.3301024,
+    "mtime": 1786683464.4513636,
     "ast_hash": "b85d0096e2c78f0f8079659c9bb45596",
     "semantic_hash": "b85d0096e2c78f0f8079659c9bb45596"
   },
@@ -525,7 +530,7 @@
     "semantic_hash": "e0c24241a7fcc0243a1ebb15bca2cef6"
   },
   "tools/install.sh": {
-    "mtime": 1786678888.0321467,
+    "mtime": 1786683254.855867,
     "ast_hash": "a6e291a7de4d78e5856817de3b8432dd",
     "semantic_hash": "a6e291a7de4d78e5856817de3b8432dd"
   },
@@ -535,7 +540,7 @@
     "semantic_hash": "105fb5c148abd2267277a37f7e53205f"
   },
   "tools/update.sh": {
-    "mtime": 1786678888.0290456,
+    "mtime": 1786683254.8561769,
     "ast_hash": "0d0b78b0a7e258ffb6f72739024e3d90",
     "semantic_hash": "0d0b78b0a7e258ffb6f72739024e3d90"
   },
@@ -543,10 +548,5 @@
     "mtime": 1783938979.9176092,
     "ast_hash": "bb8606c70f6d92a1f264431cad4b2695",
     "semantic_hash": "bb8606c70f6d92a1f264431cad4b2695"
-  },
-  "src/api/opencode.ts": {
-    "mtime": 1786679184.6148038,
-    "ast_hash": "a1780aa93c2e9834ee472a34e5d454c0",
-    "semantic_hash": "a1780aa93c2e9834ee472a34e5d454c0"
   }
 }

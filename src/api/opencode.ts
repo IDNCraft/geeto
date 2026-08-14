@@ -1,6 +1,7 @@
 import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
 import { createRequire } from 'node:module'
+import { createServer } from 'node:net'
 import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -48,7 +49,6 @@ const OPENCODE_ZEN_ENVIRONMENT = {
   XDG_CACHE_HOME: path.join(OPENCODE_ZEN_RUNTIME_ROOT, 'cache'),
   XDG_STATE_HOME: path.join(OPENCODE_ZEN_RUNTIME_ROOT, 'state'),
 }
-const OPENCODE_ZEN_PORT = 49217
 const runtimeRequire = createRequire(import.meta.url)
 let openCodeEnvironmentLock = Promise.resolve()
 
@@ -130,10 +130,33 @@ const withIsolatedOpenCodeEnvironment = async <T>(operation: () => Promise<T>): 
   }
 }
 
+const getAvailableOpenCodePort = async (): Promise<number> =>
+  new Promise((resolve, reject) => {
+    const probe = createServer()
+    probe.once('error', reject)
+    probe.listen(0, '127.0.0.1', () => {
+      const address = probe.address()
+      if (!address || typeof address === 'string') {
+        probe.close()
+        reject(new Error('Could not determine an available OpenCode Zen port'))
+        return
+      }
+
+      probe.close((error) => {
+        if (error) {
+          reject(error)
+          return
+        }
+        resolve(address.port)
+      })
+    })
+  })
+
 const startRuntime = async (): Promise<OpenCodeRuntime | null> => {
   try {
     return await withIsolatedOpenCodeEnvironment(async () => {
-      const server = await createOpencode({ port: OPENCODE_ZEN_PORT, timeout: 5000 })
+      const port = await getAvailableOpenCodePort()
+      const server = await createOpencode({ port, timeout: 5000 })
       const client = createOpencodeClient({
         baseUrl: server.server.url,
         directory: process.cwd(),

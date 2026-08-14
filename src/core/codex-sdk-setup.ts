@@ -1,36 +1,29 @@
 /**
  * Codex integration setup
- * Supports two authentication modes:
- *   1. API Token — user pastes their OpenAI API key, stored in .geeto/codex.toml
- *   2. OAuth     — delegates to `codex login` which stores a token in ~/.codex/auth.json
+ * Supports API token and isolated OAuth authentication.
  */
 
-import { execSync, spawnSync } from 'node:child_process'
+import { spawnSync } from 'node:child_process'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 
+import {
+  getCodexBinaryPath,
+  getCodexEnvironment,
+  installCodexRuntime,
+  isAvailable as isCodexRuntimeAvailable,
+  prepareCodexRuntimeHome,
+} from '../api/codex-sdk.js'
 import { askQuestion, confirm } from '../cli/input.js'
 import { select } from '../cli/menu.js'
 import { GLOBAL_GEETO_DIR } from '../utils/config.js'
 import { log } from '../utils/logging.js'
 
-// ── helpers ────────────────────────────────────────────────────────────────
+const isCodexCliAvailable = (): boolean => isCodexRuntimeAvailable()
 
-/** Check whether the `codex` CLI is installed and available in PATH. */
-const isCodexCliAvailable = (): boolean => {
-  try {
-    execSync('codex --version', { stdio: 'pipe' })
-    return true
-  } catch {
-    return false
-  }
-}
-
-/** Path to the global codex config stored by geeto. */
 const getCodexConfigFilePath = (): string => path.join(GLOBAL_GEETO_DIR, 'codex.toml')
 
-/** Read the API key (if any) that was stored by geeto. */
 export const getStoredCodexApiKey = (): string | null => {
   try {
     const configPath = getCodexConfigFilePath()
@@ -43,29 +36,31 @@ export const getStoredCodexApiKey = (): string | null => {
   }
 }
 
-/** Check whether the user has authenticated via `codex login` (OAuth flow). */
 const hasOAuthToken = (): boolean => {
-  try {
-    // The codex CLI stores OAuth tokens in ~/.codex/auth.json
-    const authFile = path.join(os.homedir(), '.codex', 'auth.json')
-    if (!fs.existsSync(authFile)) return false
-    const raw = fs.readFileSync(authFile, 'utf8')
-    const parsed = JSON.parse(raw) as Record<string, unknown>
-    // Valid if it contains at least one key (token or similar)
-    return Object.keys(parsed).length > 0
-  } catch {
-    return false
-  }
-}
+  const authFiles = [path.join(os.homedir(), '.codex', 'auth.json')]
+  const runtimeHome = getCodexEnvironment().HOME
+  if (runtimeHome) authFiles.push(path.join(runtimeHome, '.codex', 'auth.json'))
 
-// ── Token auth ─────────────────────────────────────────────────────────────
+  for (const authFile of authFiles) {
+    try {
+      if (!fs.existsSync(authFile)) continue
+      const raw = fs.readFileSync(authFile, 'utf8')
+      const parsed = JSON.parse(raw) as Record<string, unknown>
+      if (Object.keys(parsed).length > 0) return true
+    } catch {
+      // Try the next auth location.
+    }
+  }
+
+  return false
+}
 
 const setupViaToken = (): boolean => {
   log.info('You can get your API key from https://platform.openai.com/api-keys')
   console.log('')
 
   const key = askQuestion('Paste your OpenAI API key (sk-...): ').trim()
-  if (!key?.startsWith('sk-')) {
+  if (!key.startsWith('sk-')) {
     log.warn('Invalid API key format. Expected a key starting with sk-')
     return false
   }
@@ -93,17 +88,21 @@ const setupViaToken = (): boolean => {
   }
 }
 
-// ── OAuth auth ─────────────────────────────────────────────────────────────
-
-/**
- * Run `codex login` interactively in the current terminal.
- * Returns true if the login process exited successfully and auth.json was written.
- */
 const runCodexLogin = (): boolean => {
-  log.info('Launching `codex login`...')
-  console.log('')
+  const codexPath = getCodexBinaryPath()
+  if (!codexPath) {
+    log.error('Codex isolated runtime is unavailable.')
+    return false
+  }
 
-  const result = spawnSync('codex', ['login'], { stdio: 'inherit' })
+  log.info('Launching isolated `codex login`...')
+  console.log('')
+  prepareCodexRuntimeHome()
+
+  const result = spawnSync(codexPath, ['login'], {
+    stdio: 'inherit',
+    env: getCodexEnvironment(codexPath),
+  })
 
   console.log('')
   if (result.error) {
@@ -119,20 +118,18 @@ const runCodexLogin = (): boolean => {
 
 const setupViaOAuth = async (): Promise<boolean> => {
   if (!isCodexCliAvailable()) {
-    log.error('Codex CLI not found in PATH.')
-    log.info('Install it first: npm install -g @openai/codex')
-    log.info('Or: https://github.com/openai/codex')
+    log.error('Codex isolated runtime is unavailable.')
+    log.info('Install npm or Bun, then rerun `geeto --setup-codex`.')
     const proceed = confirm(
-      'Save setup without verification? OpenAI Codex stays unavailable until the CLI is installed.',
+      'Save setup without verification? OpenAI Codex stays unavailable until the isolated runtime is installed.',
       false
     )
     if (!proceed) return false
   }
 
   if (hasOAuthToken()) {
-    log.success('OAuth token found in ~/.codex/auth.json — OpenAI Codex is already authenticated.')
+    log.success('OAuth token found — OpenAI Codex is already authenticated.')
 
-    const { select } = await import('../cli/menu.js')
     const action = await select('OpenAI Codex is authenticated. Choose an account action:', [
       { label: 'Keep existing login (no changes)', value: 'keep' },
       { label: 'Re-login (switch account or refresh token)', value: 'relogin' },
@@ -159,9 +156,7 @@ const setupViaOAuth = async (): Promise<boolean> => {
         if (!force) return false
       }
     }
-    // 'keep' → fall through to save sentinel
   } else {
-    // No existing token — run codex login directly
     const ok = runCodexLogin()
     if (!ok) {
       log.warn('codex login did not complete successfully.')
@@ -173,7 +168,7 @@ const setupViaOAuth = async (): Promise<boolean> => {
     } else if (hasOAuthToken()) {
       log.success('OAuth token verified!')
     } else {
-      log.warn('OAuth token not found in ~/.codex/auth.json after login.')
+      log.warn('OAuth token not found after login.')
       const force = confirm(
         'Save OpenAI Codex setup without verification? OpenAI Codex may remain unavailable until authentication succeeds.',
         false
@@ -182,7 +177,6 @@ const setupViaOAuth = async (): Promise<boolean> => {
     }
   }
 
-  // Write sentinel config marking auth method as oauth
   try {
     if (!fs.existsSync(GLOBAL_GEETO_DIR)) {
       fs.mkdirSync(GLOBAL_GEETO_DIR, { recursive: true })
@@ -204,14 +198,12 @@ const setupViaOAuth = async (): Promise<boolean> => {
   }
 }
 
-// ── Main entry ─────────────────────────────────────────────────────────────
-
 export const setupCodexConfigInteractive = async (): Promise<boolean> => {
   if (!isCodexCliAvailable()) {
-    log.warn('Codex CLI not found in PATH.')
-    log.info('Install: npm install -g @openai/codex')
-    log.info('Docs: https://github.com/openai/codex')
-    console.log('')
+    log.info('OpenAI Codex isolated runtime is not installed. Setting it up...')
+    if (!installCodexRuntime()) {
+      log.warn('OpenAI Codex isolated runtime setup failed.')
+    }
   }
 
   const authMethod = await select('Choose OpenAI Codex authentication method:', [
@@ -227,10 +219,6 @@ export const setupCodexConfigInteractive = async (): Promise<boolean> => {
   ])
 
   if (authMethod === 'back') return false
-
-  if (authMethod === 'token') {
-    return setupViaToken()
-  }
-
-  return await setupViaOAuth()
+  if (authMethod === 'token') return setupViaToken()
+  return setupViaOAuth()
 }

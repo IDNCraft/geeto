@@ -86,6 +86,12 @@ export const ensureGroq = async (): Promise<boolean> => {
 
 export const ensureCodex = async (): Promise<boolean> => {
   try {
+    const { installCodexRuntime, isAvailable } = await import('../api/codex-sdk.js')
+    if (!isAvailable()) {
+      log.info('OpenAI Codex isolated runtime is not installed. Setting it up...')
+      if (!installCodexRuntime()) return false
+    }
+
     const { hasCodexConfig } = await import('../utils/config.js')
     if (hasCodexConfig()) {
       return true
@@ -102,14 +108,17 @@ export const ensureCodex = async (): Promise<boolean> => {
 
 export const ensureOpenCode = async (): Promise<boolean> => {
   try {
-    const { isAvailable } = await import('../api/opencode.js')
+    const { installOpenCodeRuntime, isAvailable } = await import('../api/opencode.js')
     if (isAvailable()) return true
+
+    log.info('OpenCode Zen isolated runtime is not installed. Setting it up...')
+    if (installOpenCodeRuntime()) return true
   } catch {
-    // fall through to the setup message
+    log.warn('OpenCode Zen setup helper could not be loaded.')
   }
 
-  log.warn('OpenCode Zen is not available in PATH.')
-  log.info('Install it from https://opencode.ai/docs/installation/')
+  log.warn('OpenCode Zen is not set up.')
+  log.info('Run `geeto --setup-opencode` after installing npm or Bun.')
   return false
 }
 

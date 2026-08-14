@@ -1,5 +1,6 @@
 import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
+import { createRequire } from 'node:module'
 import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -33,17 +34,67 @@ type OpenCodeRuntime = {
 }
 
 const OPENCODE_ZEN_RUNTIME_ROOT = path.join(os.homedir(), '.geeto', 'opencode-zen')
+const OPENCODE_ZEN_PACKAGE = 'opencode-ai@1.18.16'
+const OPENCODE_SHIM_NAMES =
+  process.platform === 'win32' ? ['opencode.cmd', 'opencode.exe', 'opencode'] : ['opencode']
+const OPENCODE_ZEN_RUNTIME_BINARY = path.join(
+  OPENCODE_ZEN_RUNTIME_ROOT,
+  'bin',
+  process.platform === 'win32' ? 'opencode.exe' : 'opencode'
+)
 const OPENCODE_ZEN_ENVIRONMENT = {
   XDG_CONFIG_HOME: path.join(OPENCODE_ZEN_RUNTIME_ROOT, 'config'),
   XDG_DATA_HOME: path.join(OPENCODE_ZEN_RUNTIME_ROOT, 'data'),
   XDG_CACHE_HOME: path.join(OPENCODE_ZEN_RUNTIME_ROOT, 'cache'),
   XDG_STATE_HOME: path.join(OPENCODE_ZEN_RUNTIME_ROOT, 'state'),
 }
-const OPENCODE_LOCAL_BINARY = fileURLToPath(
-  new URL('../../node_modules/.bin/opencode', import.meta.url)
-)
 const OPENCODE_ZEN_PORT = 49217
+const runtimeRequire = createRequire(import.meta.url)
 let openCodeEnvironmentLock = Promise.resolve()
+
+const getOpenCodeShimCandidates = (directory: string): string[] =>
+  OPENCODE_SHIM_NAMES.map((name) => path.join(directory, name))
+
+const getLocalOpenCodeShims = (): string[] => {
+  try {
+    const packageJsonPath = runtimeRequire.resolve('opencode-ai/package.json')
+    return getOpenCodeShimCandidates(path.join(path.dirname(packageJsonPath), '..', '.bin'))
+  } catch {
+    return []
+  }
+}
+
+const getOpenCodeCandidates = (): string[] => {
+  const candidates = [
+    OPENCODE_ZEN_RUNTIME_BINARY,
+    ...getOpenCodeShimCandidates(path.join(OPENCODE_ZEN_RUNTIME_ROOT, 'node_modules', '.bin')),
+    ...getOpenCodeShimCandidates(path.join(process.cwd(), 'node_modules', '.bin')),
+    ...getLocalOpenCodeShims(),
+  ]
+
+  try {
+    for (const name of OPENCODE_SHIM_NAMES) {
+      candidates.push(fileURLToPath(new URL(`../../node_modules/.bin/${name}`, import.meta.url)))
+    }
+  } catch {
+    // Compiled Bun binaries may not expose a filesystem import URL.
+  }
+
+  return [...new Set(candidates)]
+}
+
+const getAvailableOpenCodeBinary = (): string | undefined => {
+  for (const candidate of getOpenCodeCandidates()) {
+    try {
+      execFileSync(candidate, ['--version'], { stdio: 'pipe' })
+      return candidate
+    } catch {
+      // Try the next isolated or package-managed candidate.
+    }
+  }
+
+  return undefined
+}
 
 const withIsolatedOpenCodeEnvironment = async <T>(operation: () => Promise<T>): Promise<T> => {
   const previousLock = openCodeEnvironmentLock
@@ -63,9 +114,9 @@ const withIsolatedOpenCodeEnvironment = async <T>(operation: () => Promise<T>): 
     for (const directory of Object.values(OPENCODE_ZEN_ENVIRONMENT)) {
       fs.mkdirSync(directory, { recursive: true })
     }
-    process.env.PATH = [path.dirname(OPENCODE_LOCAL_BINARY), process.env.PATH]
-      .filter(Boolean)
-      .join(path.delimiter)
+    const binary = getAvailableOpenCodeBinary()
+    const binaryDirectory = binary ? path.dirname(binary) : undefined
+    process.env.PATH = [binaryDirectory, process.env.PATH].filter(Boolean).join(path.delimiter)
     for (const [key, value] of Object.entries(OPENCODE_ZEN_ENVIRONMENT)) {
       process.env[key] = value
     }
@@ -236,11 +287,67 @@ const runPrompt = async (prompt: string, model?: OpenCodeModel): Promise<string 
   }
 }
 
-export const isAvailable = (): boolean => {
+export const isAvailable = (): boolean => getAvailableOpenCodeBinary() !== undefined
+
+export const installOpenCodeRuntime = (): boolean => {
+  if (isAvailable()) return true
+
+  const installer = ['npm', 'bun'].find((command) => {
+    try {
+      execFileSync(command, ['--version'], { stdio: 'ignore' })
+      return true
+    } catch {
+      return false
+    }
+  })
+
+  if (!installer) {
+    log.warn('OpenCode Zen setup needs npm or Bun available in PATH.')
+    return false
+  }
+
   try {
-    execFileSync(OPENCODE_LOCAL_BINARY, ['--version'], { stdio: 'pipe' })
-    return true
-  } catch {
+    fs.mkdirSync(OPENCODE_ZEN_RUNTIME_ROOT, { recursive: true })
+    if (installer === 'npm') {
+      execFileSync(
+        installer,
+        [
+          'install',
+          '--prefix',
+          OPENCODE_ZEN_RUNTIME_ROOT,
+          '--no-save',
+          '--package-lock=false',
+          OPENCODE_ZEN_PACKAGE,
+        ],
+        { stdio: 'inherit' }
+      )
+    } else {
+      execFileSync(
+        installer,
+        ['add', '--cwd', OPENCODE_ZEN_RUNTIME_ROOT, '--exact', OPENCODE_ZEN_PACKAGE],
+        { stdio: 'inherit' }
+      )
+    }
+
+    const packageBinary = path.join(
+      OPENCODE_ZEN_RUNTIME_ROOT,
+      'node_modules',
+      'opencode-ai',
+      'bin',
+      'opencode.exe'
+    )
+    if (!fs.existsSync(packageBinary)) {
+      log.warn('OpenCode Zen package installed without a usable runtime binary.')
+      return false
+    }
+
+    fs.mkdirSync(path.dirname(OPENCODE_ZEN_RUNTIME_BINARY), { recursive: true })
+    fs.copyFileSync(packageBinary, OPENCODE_ZEN_RUNTIME_BINARY)
+    if (process.platform !== 'win32') fs.chmodSync(OPENCODE_ZEN_RUNTIME_BINARY, 0o755)
+    return isAvailable()
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    log.warn(`OpenCode Zen runtime setup failed: ${message}`)
     return false
   }
 }

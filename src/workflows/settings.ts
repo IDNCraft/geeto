@@ -161,8 +161,8 @@ const handleGlobalConfigSetting = async (): Promise<boolean | void> => {
           break
         }
         case 'codex': {
-          const { setupCodexConfigInteractive } = await import('../core/codex-sdk-setup.js')
-          await setupCodexConfigInteractive()
+          const { ensureCodex } = await import('../core/setup.js')
+          await ensureCodex()
           break
         }
         case 'github': {
@@ -237,8 +237,8 @@ const runInteractiveSetup = async (name: 'trello' | 'openrouter' | 'gemini' | 'g
   }
 
   if (name === 'codex') {
-    const { setupCodexConfigInteractive } = await import('../core/codex-sdk-setup.js')
-    const codexSetupSuccess = await setupCodexConfigInteractive()
+    const { ensureCodex } = await import('../core/setup.js')
+    const codexSetupSuccess = await ensureCodex()
     if (codexSetupSuccess) {
       log.success('OpenAI Codex integration configured!')
     } else {
@@ -836,43 +836,13 @@ const syncOpenCodeModels = async (): Promise<boolean> => {
 
 const handleModelResetSetting = async (): Promise<boolean | void> => {
   const providerAvailability = await getModelProviderAvailability()
-  if (!Object.values(providerAvailability).some(Boolean)) {
-    log.warn('No AI provider is set up. Configure one before managing model favorites.')
-    return false
-  }
 
   const resetChoice = await select('Which provider model favorites should be updated?', [
-    {
-      label: providerAvailability.gemini ? 'Gemini' : 'Gemini (run geeto --setup-gemini first)',
-      value: 'gemini',
-      disabled: !providerAvailability.gemini,
-    },
-    {
-      label: providerAvailability.openrouter
-        ? 'OpenRouter'
-        : 'OpenRouter (run geeto --setup-openrouter first)',
-      value: 'openrouter',
-      disabled: !providerAvailability.openrouter,
-    },
-    {
-      label: providerAvailability.groq ? 'Groq' : 'Groq (run geeto --setup-groq first)',
-      value: 'groq',
-      disabled: !providerAvailability.groq,
-    },
-    {
-      label: providerAvailability.codex
-        ? 'OpenAI Codex'
-        : 'OpenAI Codex (run geeto --setup-codex first)',
-      value: 'codex',
-      disabled: !providerAvailability.codex,
-    },
-    {
-      label: providerAvailability['opencode-zen']
-        ? 'OpenCode Zen'
-        : 'OpenCode Zen (run geeto --setup-opencode first)',
-      value: 'opencode-zen',
-      disabled: !providerAvailability['opencode-zen'],
-    },
+    { label: 'Gemini', value: 'gemini' },
+    { label: 'OpenRouter', value: 'openrouter' },
+    { label: 'Groq', value: 'groq' },
+    { label: 'OpenAI Codex', value: 'codex' },
+    { label: 'OpenCode Zen', value: 'opencode-zen' },
     { label: 'Return to settings menu', value: 'back' },
   ])
 
@@ -880,7 +850,10 @@ const handleModelResetSetting = async (): Promise<boolean | void> => {
     return true
   }
   const selectedProvider = resetChoice as ModelProvider
-  if (!providerAvailability[selectedProvider]) {
+  const providerReady = providerAvailability[selectedProvider]
+    ? true
+    : await setupSelectedModelProvider(selectedProvider)
+  if (!providerReady) {
     log.warn(`Provider ${selectedProvider} is not set up. Configure it first.`)
     return false
   }
@@ -919,37 +892,11 @@ const handleChangeModelSetting = async (): Promise<boolean | void> => {
   const { chooseModelForProvider } = await import('../utils/git-ai.js')
   const providerAvailability = await getModelProviderAvailability()
   const provOptions = [
-    {
-      label: providerAvailability.gemini ? 'Gemini' : 'Gemini (run geeto --setup-gemini first)',
-      value: 'gemini',
-      disabled: !providerAvailability.gemini,
-    },
-    {
-      label: providerAvailability.openrouter
-        ? 'OpenRouter'
-        : 'OpenRouter (run geeto --setup-openrouter first)',
-      value: 'openrouter',
-      disabled: !providerAvailability.openrouter,
-    },
-    {
-      label: providerAvailability.groq ? 'Groq' : 'Groq (run geeto --setup-groq first)',
-      value: 'groq',
-      disabled: !providerAvailability.groq,
-    },
-    {
-      label: providerAvailability.codex
-        ? 'OpenAI Codex'
-        : 'OpenAI Codex (run geeto --setup-codex first)',
-      value: 'codex',
-      disabled: !providerAvailability.codex,
-    },
-    {
-      label: providerAvailability['opencode-zen']
-        ? 'OpenCode Zen'
-        : 'OpenCode Zen (run geeto --setup-opencode first)',
-      value: 'opencode-zen',
-      disabled: !providerAvailability['opencode-zen'],
-    },
+    { label: 'Gemini', value: 'gemini' },
+    { label: 'OpenRouter', value: 'openrouter' },
+    { label: 'Groq', value: 'groq' },
+    { label: 'OpenAI Codex', value: 'codex' },
+    { label: 'OpenCode Zen', value: 'opencode-zen' },
     { label: 'Back to settings menu', value: 'back' },
   ]
 
@@ -960,7 +907,10 @@ const handleChangeModelSetting = async (): Promise<boolean | void> => {
   }
 
   const selectedProvider = chosenProv as ModelProvider
-  if (!providerAvailability[selectedProvider]) {
+  const providerReady = providerAvailability[selectedProvider]
+    ? true
+    : await setupSelectedModelProvider(selectedProvider)
+  if (!providerReady) {
     log.warn(`Provider ${selectedProvider} is not set up. Configure it first.`)
     return false
   }
@@ -1328,6 +1278,18 @@ const handleOpenCodeSetting = async (): Promise<boolean | void> => {
   opencodeApi.useFreeOpenCodeZenModels()
   log.success('OpenCode Zen ready with free models.')
   return false
+}
+
+const setupSelectedModelProvider = async (provider: ModelProvider): Promise<boolean> => {
+  if (provider === 'opencode-zen') {
+    await handleOpenCodeSetting()
+  } else {
+    const { ensureAIProvider } = await import('../core/setup.js')
+    await ensureAIProvider(provider)
+  }
+
+  const availability = await getModelProviderAvailability()
+  return availability[provider]
 }
 
 const handleSaveGlobalAiConfig = (): boolean | void => {

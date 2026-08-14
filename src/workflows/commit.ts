@@ -46,7 +46,7 @@ export const getDefaultCommitTool = (
       return 'codex'
     }
     case 'opencode-zen': {
-      return 'opencode'
+      return 'opencode-zen'
     }
     default: {
       return 'manual'

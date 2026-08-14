@@ -13,7 +13,19 @@ const AI_PROVIDERS = new Set(['gemini', 'openrouter', 'groq', 'codex', 'opencode
 
 const normalizeState = (state: GeetoState): GeetoState => {
   const rawProvider = state.aiProvider?.toLowerCase()
-  const aiProvider = rawProvider === 'opencode' ? 'opencode-zen' : rawProvider
+  const normalizedProvider = rawProvider === 'opencode' ? 'opencode-zen' : rawProvider
+  const modelProviders = [
+    state.openrouterModel ? 'openrouter' : undefined,
+    state.geminiModel ? 'gemini' : undefined,
+    state.groqModel ? 'groq' : undefined,
+    state.codexModel ? 'codex' : undefined,
+    state.opencodeModel ? 'opencode-zen' : undefined,
+  ].filter((provider): provider is string => provider !== undefined)
+  const aiProvider = AI_PROVIDERS.has(normalizedProvider ?? '')
+    ? normalizedProvider
+    : modelProviders.length === 1
+      ? modelProviders[0]
+      : undefined
   return {
     ...state,
     aiProvider: AI_PROVIDERS.has(aiProvider ?? '')

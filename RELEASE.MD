@@ -1,5 +1,15 @@
 # Releases
 
+## v0.14.3 — August 14, 2026
+
+### What's New?
+
+#### Bug Fixes
+
+- Improved AI reliability by using isolated runtimes and validating model settings.
+
+---
+
 ## v0.14.2 — August 13, 2026
 
 ### What's New?

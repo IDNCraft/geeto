@@ -227,6 +227,9 @@ main() {
     cleanup_and_exit 1
   }
 
+  install_opencode_runtime
+  install_codex_runtime
+
   # ── Step 6: Install to PATH ─────────────────────────────────────
   if [ "$OS" == "windows" ]; then
     local win_dir="$USERPROFILE/.geeto/bin"
@@ -305,6 +308,75 @@ install_binary() {
         cleanup_and_exit 1
       fi
     fi
+  fi
+}
+
+install_opencode_runtime() {
+  local source_binary="$CLEANUP_TMP/node_modules/opencode-ai/bin/opencode.exe"
+  local runtime_dir="$HOME/.geeto/opencode-zen/bin"
+  local target_binary="$runtime_dir/opencode"
+  if [ "$OS" == "windows" ]; then
+    target_binary="$runtime_dir/opencode.exe"
+  fi
+
+  if [ ! -f "$source_binary" ]; then
+    echo -e "  ${YELLOW}OpenCode Zen runtime binary not found; setup can retry later.${NC}"
+    return 0
+  fi
+
+  mkdir -p "$runtime_dir"
+  if ! cp "$source_binary" "$target_binary" >>"$LOGFILE" 2>&1; then
+    echo -e "  ${YELLOW}Could not stage OpenCode Zen runtime; setup can retry later.${NC}"
+    return 0
+  fi
+  if ! chmod +x "$target_binary" >>"$LOGFILE" 2>&1; then
+    rm -f "$target_binary"
+    echo -e "  ${YELLOW}Could not prepare OpenCode Zen runtime; setup can retry later.${NC}"
+    return 0
+  fi
+  if ! "$target_binary" --version >>"$LOGFILE" 2>&1; then
+    rm -f "$target_binary"
+    echo -e "  ${YELLOW}OpenCode Zen runtime verification failed; setup can retry later.${NC}"
+  fi
+}
+
+install_codex_runtime() {
+  local target_triple=""
+  local package_name=""
+  local binary_name="codex"
+  case "$OS:$ARCH" in
+    linux:x86_64) package_name="@openai/codex-linux-x64"; target_triple="x86_64-unknown-linux-musl" ;;
+    linux:aarch64|linux:arm64) package_name="@openai/codex-linux-arm64"; target_triple="aarch64-unknown-linux-musl" ;;
+    mac:x86_64) package_name="@openai/codex-darwin-x64"; target_triple="x86_64-apple-darwin" ;;
+    mac:arm64) package_name="@openai/codex-darwin-arm64"; target_triple="aarch64-apple-darwin" ;;
+    windows:x86_64|windows:amd64) package_name="@openai/codex-win32-x64"; target_triple="x86_64-pc-windows-msvc"; binary_name="codex.exe" ;;
+    windows:arm64|windows:aarch64) package_name="@openai/codex-win32-arm64"; target_triple="aarch64-pc-windows-msvc"; binary_name="codex.exe" ;;
+  esac
+
+  if [ -z "$target_triple" ]; then
+    echo -e "  ${YELLOW}Codex runtime unsupported on ${OS}/${ARCH}; setup can retry later.${NC}"
+    return 0
+  fi
+
+  local source_vendor="$CLEANUP_TMP/node_modules/$package_name/vendor/$target_triple"
+  local runtime_vendor="$HOME/.geeto/codex-runtime/vendor/$target_triple"
+  local target_binary="$runtime_vendor/bin/$binary_name"
+  if [ ! -f "$source_vendor/codex-package.json" ]; then
+    source_vendor="$CLEANUP_TMP/node_modules/@openai/codex/node_modules/$package_name/vendor/$target_triple"
+  fi
+  if [ ! -f "$source_vendor/codex-package.json" ]; then
+    echo -e "  ${YELLOW}Codex runtime vendor not found; setup can retry later.${NC}"
+    return 0
+  fi
+
+  mkdir -p "$runtime_vendor"
+  if ! cp -R "$source_vendor/." "$runtime_vendor/" >>"$LOGFILE" 2>&1; then
+    echo -e "  ${YELLOW}Could not stage Codex runtime; setup can retry later.${NC}"
+    return 0
+  fi
+  chmod +x "$target_binary" >>"$LOGFILE" 2>&1 || true
+  if ! "$target_binary" --version >>"$LOGFILE" 2>&1; then
+    echo -e "  ${YELLOW}Codex runtime verification failed; setup can retry later.${NC}"
   fi
 }
 

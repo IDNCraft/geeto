@@ -1,6 +1,6 @@
 {
   "name": "geeto",
-  "version": "0.14.2",
+  "version": "0.14.3",
   "description": "AI-powered Git workflow automation CLI with smart commit messages, branch naming, and Trello integration",
   "author": {
     "name": "IDNCraft",
@@ -83,7 +83,7 @@
     "prepublishOnly": "pinst --disable",
     "postpublish": "pinst --enable",
     "lint-staged": "lint-staged",
-    "tools:install": "sh tools/install.sh",
+    "tools:install": "bash tools/install.sh",
     "install:local": "bash scripts/install-local.sh"
   },
   "devDependencies": {

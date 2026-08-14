@@ -11,9 +11,13 @@ import { colors } from '../utils/colors.js'
 import {
   getBranchStrategyConfig,
   getCommitConfig,
+  getOpenCodeZenConfigPath,
   getProtectedBranches,
   GLOBAL_GEETO_DIR,
+  hasCodexConfig,
   hasGeminiConfig,
+  hasGroqConfig,
+  hasOpenRouterConfig,
   hasTrelloConfig,
   resolveConfigPath,
   saveBranchStrategyConfig,
@@ -70,6 +74,22 @@ const globalConfigPath = (name: string) => path.join(GLOBAL_GEETO_DIR, `${name}.
 const isConfigGlobal = (name: string): boolean => existsSync(globalConfigPath(name))
 
 const globalProviders = (): AiProvider[] => AI_PROVIDERS.filter((p) => isConfigGlobal(p))
+
+type ModelProvider = 'gemini' | 'openrouter' | 'groq' | 'codex' | 'opencode-zen'
+type ModelProviderAvailability = Record<ModelProvider, boolean>
+
+const getModelProviderAvailability = async (): Promise<ModelProviderAvailability> => {
+  const [{ isAvailable: isCodexAvailable }, { isAvailable: isOpenCodeAvailable }] =
+    await Promise.all([import('../api/codex-sdk.js'), import('../api/opencode.js')])
+
+  return {
+    'gemini': hasGeminiConfig(),
+    'openrouter': hasOpenRouterConfig(),
+    'groq': hasGroqConfig(),
+    'codex': hasCodexConfig() && isCodexAvailable(),
+    'opencode-zen': existsSync(getOpenCodeZenConfigPath()) && isOpenCodeAvailable(),
+  }
+}
 
 const maskValue = (val: string): string =>
   val.length <= 8 ? '***' : `${val.slice(0, 4)}...${val.slice(-4)}`
@@ -141,8 +161,8 @@ const handleGlobalConfigSetting = async (): Promise<boolean | void> => {
           break
         }
         case 'codex': {
-          const { setupCodexConfigInteractive } = await import('../core/codex-sdk-setup.js')
-          await setupCodexConfigInteractive()
+          const { ensureCodex } = await import('../core/setup.js')
+          await ensureCodex()
           break
         }
         case 'github': {
@@ -217,8 +237,8 @@ const runInteractiveSetup = async (name: 'trello' | 'openrouter' | 'gemini' | 'g
   }
 
   if (name === 'codex') {
-    const { setupCodexConfigInteractive } = await import('../core/codex-sdk-setup.js')
-    const codexSetupSuccess = await setupCodexConfigInteractive()
+    const { ensureCodex } = await import('../core/setup.js')
+    const codexSetupSuccess = await ensureCodex()
     if (codexSetupSuccess) {
       log.success('OpenAI Codex integration configured!')
     } else {
@@ -702,6 +722,11 @@ const syncGroqModels = async (): Promise<void> => {
 // Sync OpenAI Codex models (fetch from SDK & persist user favorites)
 const syncCodexModels = async (): Promise<void> => {
   try {
+    if (!hasCodexConfig()) {
+      log.warn('OpenAI Codex is not set up. Run `geeto --setup-codex` first.')
+      return
+    }
+
     let sdkModule: unknown = null
     try {
       sdkModule = await import('../api/codex-sdk.js')
@@ -721,9 +746,8 @@ const syncCodexModels = async (): Promise<void> => {
     }
 
     if (typeof sdk.isAvailable === 'function' && !sdk.isAvailable()) {
-      const { setupCodexConfigInteractive } = await import('../core/codex-sdk-setup.js')
-      const setupOk = await setupCodexConfigInteractive()
-      if (!setupOk) return
+      log.warn('OpenAI Codex runtime is unavailable. Run `geeto --setup-codex` first.')
+      return
     }
 
     const spinner = new ScrambleProgress()
@@ -767,13 +791,18 @@ const syncCodexModels = async (): Promise<void> => {
   }
 }
 
-const syncOpenCodeModels = async (): Promise<void> => {
+const syncOpenCodeModels = async (): Promise<boolean> => {
   try {
     const opencodeApi = await import('../api/opencode.js')
+    if (!opencodeApi.isAvailable()) {
+      log.warn('OpenCode Zen is not set up. Run `geeto --setup-opencode` first.')
+      return false
+    }
+
     const models = await opencodeApi.getOpenCodeModels()
     if (models.length === 0) {
       log.warn('No OpenCode Zen models found. Configure OpenCode Zen first.')
-      return
+      return false
     }
 
     const freeModelValues = models.filter((model) => model.isFree).map((model) => model.value)
@@ -784,7 +813,7 @@ const syncOpenCodeModels = async (): Promise<void> => {
     )
     if (!selected || selected.length === 0) {
       log.info('No models selected. Sync cancelled.')
-      return
+      return false
     }
 
     const fsModule = await import('node:fs')
@@ -797,13 +826,17 @@ const syncOpenCodeModels = async (): Promise<void> => {
     }))
     await fsModule.promises.writeFile(outFile, JSON.stringify(simple, null, 2))
     log.success(`Saved ${simple.length} OpenCode Zen model(s) to .geeto/opencode-model.json`)
+    return true
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : String(error)
     log.warn(`OpenCode Zen model sync failed: ${msg}`)
+    return false
   }
 }
 
 const handleModelResetSetting = async (): Promise<boolean | void> => {
+  const providerAvailability = await getModelProviderAvailability()
+
   const resetChoice = await select('Which provider model favorites should be updated?', [
     { label: 'Gemini', value: 'gemini' },
     { label: 'OpenRouter', value: 'openrouter' },
@@ -816,8 +849,17 @@ const handleModelResetSetting = async (): Promise<boolean | void> => {
   if (resetChoice === 'back') {
     return true
   }
+  const selectedProvider = resetChoice as ModelProvider
+  const providerReady = providerAvailability[selectedProvider]
+    ? true
+    : await setupSelectedModelProvider(selectedProvider)
+  if (!providerReady) {
+    log.warn(`Provider ${selectedProvider} is not set up. Configure it first.`)
+    return false
+  }
 
   try {
+    let modelSyncCompleted = true
     if (resetChoice === 'openrouter') {
       await syncOpenRouterModels()
     }
@@ -831,10 +873,10 @@ const handleModelResetSetting = async (): Promise<boolean | void> => {
       await syncCodexModels()
     }
     if (resetChoice === 'opencode-zen') {
-      await syncOpenCodeModels()
+      modelSyncCompleted = await syncOpenCodeModels()
     }
 
-    log.success('Model sync completed!')
+    if (modelSyncCompleted) log.success('Model sync completed!')
   } catch (error) {
     log.error(`Model sync failed: ${error}`)
   }
@@ -848,6 +890,7 @@ const handleModelResetSetting = async (): Promise<boolean | void> => {
  */
 const handleChangeModelSetting = async (): Promise<boolean | void> => {
   const { chooseModelForProvider } = await import('../utils/git-ai.js')
+  const providerAvailability = await getModelProviderAvailability()
   const provOptions = [
     { label: 'Gemini', value: 'gemini' },
     { label: 'OpenRouter', value: 'openrouter' },
@@ -863,6 +906,15 @@ const handleChangeModelSetting = async (): Promise<boolean | void> => {
     return true
   }
 
+  const selectedProvider = chosenProv as ModelProvider
+  const providerReady = providerAvailability[selectedProvider]
+    ? true
+    : await setupSelectedModelProvider(selectedProvider)
+  if (!providerReady) {
+    log.warn(`Provider ${selectedProvider} is not set up. Configure it first.`)
+    return false
+  }
+
   const picked = await chooseModelForProvider(
     chosenProv as 'gemini' | 'openrouter' | 'groq' | 'codex' | 'opencode-zen',
     undefined,
@@ -873,7 +925,11 @@ const handleChangeModelSetting = async (): Promise<boolean | void> => {
     return true
   }
   if (picked === undefined) {
-    log.warn('Provider setup not available; cannot change model.')
+    if (chosenProv === 'opencode-zen') {
+      log.warn('OpenCode Zen setup unavailable. Run `geeto --setup-opencode` first.')
+    } else {
+      log.warn('Provider setup not available; cannot change model.')
+    }
     return false
   }
 
@@ -1144,6 +1200,15 @@ const handleGroqSetting = async (): Promise<boolean | void> => {
 }
 
 export const handleCodexSetting = async (): Promise<boolean | void> => {
+  const { installCodexRuntime, isAvailable } = await import('../api/codex-sdk.js')
+  if (!isAvailable()) {
+    log.info('OpenAI Codex isolated runtime is not installed. Setting it up...')
+    if (!installCodexRuntime()) {
+      log.warn('OpenAI Codex isolated runtime setup failed.')
+      return false
+    }
+  }
+
   const { hasCodexConfig } = await import('../utils/config.js')
   const hasConfig = hasCodexConfig()
 
@@ -1213,6 +1278,18 @@ const handleOpenCodeSetting = async (): Promise<boolean | void> => {
   opencodeApi.useFreeOpenCodeZenModels()
   log.success('OpenCode Zen ready with free models.')
   return false
+}
+
+const setupSelectedModelProvider = async (provider: ModelProvider): Promise<boolean> => {
+  if (provider === 'opencode-zen') {
+    await handleOpenCodeSetting()
+  } else {
+    const { ensureAIProvider } = await import('../core/setup.js')
+    await ensureAIProvider(provider)
+  }
+
+  const availability = await getModelProviderAvailability()
+  return availability[provider]
 }
 
 const handleSaveGlobalAiConfig = (): boolean | void => {
@@ -1390,9 +1467,17 @@ export const showSettingsMenu = async () => {
     }
 
     if (settingChoice === '_ai') {
+      const providerAvailability = await getModelProviderAvailability()
+      const hasConfiguredModelProvider = Object.values(providerAvailability).some(Boolean)
       const aiChoice = await select('Choose an AI setting:', [
         { label: 'Change active provider and model', value: 'change-model' },
-        { label: 'Manage saved model favorites', value: 'models' },
+        {
+          label: hasConfiguredModelProvider
+            ? 'Manage saved model favorites'
+            : 'Manage saved model favorites (set up a provider first)',
+          value: 'models',
+          disabled: !hasConfiguredModelProvider,
+        },
         { label: 'Return to settings', value: 'back' },
       ])
       if (aiChoice === 'back') continue

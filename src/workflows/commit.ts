@@ -13,6 +13,7 @@ import { select } from '../cli/menu.js'
 import { colors } from '../utils/colors.js'
 import { extractCommitTitle, getCommitTypes, normalizeAIOutput } from '../utils/commit-helpers.js'
 import { DEFAULT_GEMINI_MODEL } from '../utils/config.js'
+import { ensurePrivateDirectory } from '../utils/credentials.js'
 import { getStepProgress } from '../utils/display.js'
 import { isDryRun } from '../utils/dry-run.js'
 import { execGit } from '../utils/exec.js'
@@ -824,7 +825,7 @@ export const handleCommitWorkflow = async (
       try {
         const fs = await import('node:fs/promises')
         const outDir = path.join(process.cwd(), '.geeto')
-        await fs.mkdir(outDir, { recursive: true })
+        ensurePrivateDirectory(outDir)
 
         let modelParam: string | undefined
         switch (state.aiProvider) {

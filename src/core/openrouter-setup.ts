@@ -7,6 +7,7 @@ import path from 'node:path'
 
 import { askQuestion, confirm } from '../cli/input.js'
 import { GLOBAL_GEETO_DIR, resolveConfigPath } from '../utils/config.js'
+import { ensurePrivateDirectory, writeCredentialFile } from '../utils/credentials.js'
 import { openBrowser } from '../utils/exec.js'
 import { log } from '../utils/logging.js'
 
@@ -58,8 +59,9 @@ export const setupOpenRouterConfigInteractive = (): boolean => {
   const configPath = path.join(configDir, 'openrouter.toml')
 
   try {
-    if (!fs.existsSync(configDir)) {
-      fs.mkdirSync(configDir, { recursive: true })
+    const configDirExists = fs.existsSync(configDir)
+    ensurePrivateDirectory(configDir)
+    if (!configDirExists) {
       log.success(`Created config directory: ${configDir}`)
     }
   } catch (error) {
@@ -75,7 +77,7 @@ openrouter_api_key = "${openrouterKey}"
 `
 
   try {
-    fs.writeFileSync(configPath, configContent, 'utf8')
+    writeCredentialFile(configPath, configContent)
     log.success(`OpenRouter config saved to: ${configPath}`)
 
     try {

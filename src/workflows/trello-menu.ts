@@ -25,6 +25,7 @@ import { askQuestion, editMultiline } from '../cli/input.js'
 import { multiSelect, select } from '../cli/menu.js'
 import { colors } from '../utils/colors.js'
 import { ensureGeetoIgnored, hasTrelloConfig } from '../utils/config.js'
+import { ensurePrivateDirectory } from '../utils/credentials.js'
 import { log } from '../utils/logging.js'
 
 /**
@@ -124,6 +125,7 @@ export const handleGenerateTaskInstructions = async (): Promise<void> => {
   // Write task files
   try {
     ensureGeetoIgnored()
+    ensurePrivateDirectory(path.join(process.cwd(), '.geeto'))
 
     // Create tasks directory if it doesn't exist
     if (!fs.existsSync(tasksDir)) {

@@ -6,6 +6,7 @@ import fs from 'node:fs'
 
 import { askQuestion, confirm } from '../cli/input.js'
 import { ensureGeetoIgnored, getTrelloConfigPath, setSkipTrelloPrompt } from '../utils/config.js'
+import { ensurePrivateDirectory, writeCredentialFile } from '../utils/credentials.js'
 import { openBrowser } from '../utils/exec.js'
 import { log } from '../utils/logging.js'
 
@@ -43,7 +44,7 @@ export const setupTrelloConfigInteractive = (): boolean => {
 
   const tokenUrl = `https://trello.com/1/authorize?expiration=never&name=Geeto&scope=read,write&response_type=token&key=${apiKey}`
   log.info(`Open this URL to get your token:`)
-  log.info(`${tokenUrl}\n`)
+  log.info(`${tokenUrl.replace(apiKey, '[REDACTED]')}\n`)
 
   // Offer to open the token URL in the user's default browser
   const openNow = confirm('Open authorization URL in your browser now?')
@@ -75,8 +76,9 @@ export const setupTrelloConfigInteractive = (): boolean => {
   ensureGeetoIgnored()
 
   try {
-    if (!fs.existsSync(configDir)) {
-      fs.mkdirSync(configDir, { recursive: true })
+    const configDirExists = fs.existsSync(configDir)
+    ensurePrivateDirectory(configDir)
+    if (!configDirExists) {
       log.success(`Created config directory: ${configDir}`)
     }
   } catch (error: unknown) {
@@ -94,7 +96,7 @@ board_id = "${boardId}"
 `
 
   try {
-    fs.writeFileSync(path, configContent, 'utf8')
+    writeCredentialFile(path, configContent)
     log.success(`Trello config saved to: ${path}`)
     return true
   } catch (error: unknown) {

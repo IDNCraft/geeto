@@ -2,6 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 
 import { colors } from './colors.js'
+import { ensurePrivateDirectory } from './credentials.js'
 import { exec, execSilent } from './exec.js'
 import { log } from './logging.js'
 import { confirm } from '../cli/input.js'
@@ -52,9 +53,7 @@ function readCache(): UpdateCache | null {
 function writeCache(latestVersion: string): void {
   try {
     const dir = path.dirname(CACHE_FILE)
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true })
-    }
+    ensurePrivateDirectory(dir)
     const cache: UpdateCache = {
       checkedAt: new Date().toISOString(),
       latestVersion,

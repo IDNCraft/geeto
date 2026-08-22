@@ -18,6 +18,7 @@ import {
 import { askQuestion, confirm } from '../cli/input.js'
 import { select } from '../cli/menu.js'
 import { GLOBAL_GEETO_DIR } from '../utils/config.js'
+import { ensurePrivateDirectory, writeCredentialFile } from '../utils/credentials.js'
 import { log } from '../utils/logging.js'
 
 const isCodexCliAvailable = (): boolean => isCodexRuntimeAvailable()
@@ -66,9 +67,7 @@ const setupViaToken = (): boolean => {
   }
 
   try {
-    if (!fs.existsSync(GLOBAL_GEETO_DIR)) {
-      fs.mkdirSync(GLOBAL_GEETO_DIR, { recursive: true })
-    }
+    ensurePrivateDirectory(GLOBAL_GEETO_DIR)
 
     const configPath = getCodexConfigFilePath()
     const content =
@@ -79,7 +78,7 @@ const setupViaToken = (): boolean => {
         `api_key = "${key}"`,
       ].join('\n') + '\n'
 
-    fs.writeFileSync(configPath, content, 'utf8')
+    writeCredentialFile(configPath, content)
     log.success('API key saved to ~/.geeto/codex.toml')
     return true
   } catch (error) {
@@ -178,9 +177,7 @@ const setupViaOAuth = async (): Promise<boolean> => {
   }
 
   try {
-    if (!fs.existsSync(GLOBAL_GEETO_DIR)) {
-      fs.mkdirSync(GLOBAL_GEETO_DIR, { recursive: true })
-    }
+    ensurePrivateDirectory(GLOBAL_GEETO_DIR)
     const configPath = getCodexConfigFilePath()
     const content =
       [
@@ -189,7 +186,7 @@ const setupViaOAuth = async (): Promise<boolean> => {
         `auth_method = "oauth"`,
       ].join('\n') + '\n'
 
-    fs.writeFileSync(configPath, content, 'utf8')
+    writeCredentialFile(configPath, content)
     log.success('OpenAI Codex OAuth configuration saved.')
     return true
   } catch (error) {

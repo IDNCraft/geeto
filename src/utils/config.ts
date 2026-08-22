@@ -16,6 +16,7 @@ import type {
   TrelloConfig,
 } from '../types/index.js'
 
+import { ensurePrivateDirectory, writeCredentialFile } from './credentials.js'
 import { log } from './logging.js'
 
 export const GLOBAL_GEETO_DIR = path.join(os.homedir(), '.geeto')
@@ -128,9 +129,7 @@ export const setSkipTrelloPrompt = (v = true): void => {
     ensureGeetoIgnored()
     const path = getTrelloConfigPath()
     const configDir = path.slice(0, path.lastIndexOf('/'))
-    if (!fs.existsSync(configDir)) {
-      fs.mkdirSync(configDir, { recursive: true })
-    }
+    ensurePrivateDirectory(configDir)
 
     let content = ''
     if (fs.existsSync(path)) {
@@ -142,7 +141,7 @@ export const setSkipTrelloPrompt = (v = true): void => {
     // append skip_setup at end
     if (!content.endsWith('\n')) content += '\n'
     content += `skip_setup = ${v ? 'true' : 'false'}\n`
-    fs.writeFileSync(path, content, 'utf8')
+    writeCredentialFile(path, content)
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : String(error)
     log.warn(`Failed to write trello config skip flag: ${msg}`)
@@ -288,7 +287,7 @@ export const isOpenCodeZenApiKeyValidated = (): boolean => {
 
 export const setOpenCodeZenApiKeyValidated = (validated: boolean): void => {
   try {
-    if (!fs.existsSync(GLOBAL_GEETO_DIR)) fs.mkdirSync(GLOBAL_GEETO_DIR, { recursive: true })
+    ensurePrivateDirectory(GLOBAL_GEETO_DIR)
     fs.writeFileSync(
       getOpenCodeZenConfigPath(),
       `# OpenCode Zen access state\napi_key_validated = ${validated ? 'true' : 'false'}\n`,
@@ -381,9 +380,7 @@ export const saveBranchStrategyConfig = (config: BranchStrategyConfig): void => 
 
     const path = getBranchStrategyConfigPath()
     const configDir = path.slice(0, path.lastIndexOf('/'))
-    if (!fs.existsSync(configDir)) {
-      fs.mkdirSync(configDir, { recursive: true })
-    }
+    ensurePrivateDirectory(configDir)
 
     const protectedLine = config.protectedBranches?.length
       ? `protected_branches = [${config.protectedBranches.map((b) => `"${b}"`).join(', ')}]\n`
@@ -450,9 +447,7 @@ export const getCommitConfig = (): CommitConfig | null => {
 
 export const saveCommitConfig = (config: CommitConfig): void => {
   const dir = path.join(process.cwd(), '.geeto')
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true })
-  }
+  ensurePrivateDirectory(dir)
   const toneLine = config.tone ? `tone = "${config.tone}"\n` : ''
   const content = `style = "${config.style}"
 subject_length = ${config.subjectLength}

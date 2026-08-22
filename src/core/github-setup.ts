@@ -7,6 +7,7 @@ import path from 'node:path'
 
 import { askQuestion, confirm } from '../cli/input.js'
 import { GLOBAL_GEETO_DIR, resolveConfigPath } from '../utils/config.js'
+import { ensurePrivateDirectory, writeCredentialFile } from '../utils/credentials.js'
 import { exec, openBrowser } from '../utils/exec.js'
 import { log } from '../utils/logging.js'
 
@@ -100,9 +101,7 @@ export const setupGithubConfigInteractive = (): boolean => {
   const configPath = path.join(configDir, 'github.toml')
 
   try {
-    if (!fs.existsSync(configDir)) {
-      fs.mkdirSync(configDir, { recursive: true })
-    }
+    ensurePrivateDirectory(configDir)
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : String(error)
     log.error(`Failed to create config directory: ${msg}`)
@@ -116,7 +115,7 @@ token = "${token}"
 `
 
   try {
-    fs.writeFileSync(configPath, configContent, 'utf8')
+    writeCredentialFile(configPath, configContent)
     log.success(`GitHub config saved to: ${configPath}`)
     return true
   } catch (error: unknown) {

@@ -1,5 +1,7 @@
 import path from 'node:path'
 
+import { ensurePrivateDirectory } from './credentials.js'
+
 /**
  * Persist the last AI suggestion to `.geeto/last-ai-suggestion.json` for debugging.
  */
@@ -12,7 +14,7 @@ export const saveAISuggestion = async (
   try {
     const fs = await import('node:fs/promises')
     const outDir = path.join(process.cwd(), '.geeto')
-    await fs.mkdir(outDir, { recursive: true })
+    ensurePrivateDirectory(outDir)
     const payload = {
       provider,
       model,

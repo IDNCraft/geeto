@@ -7,6 +7,7 @@ import path from 'node:path'
 
 import { askQuestion, confirm } from '../cli/input.js'
 import { GLOBAL_GEETO_DIR, resolveConfigPath } from '../utils/config.js'
+import { ensurePrivateDirectory, writeCredentialFile } from '../utils/credentials.js'
 import { exec, openBrowser } from '../utils/exec.js'
 import { log } from '../utils/logging.js'
 
@@ -72,7 +73,7 @@ export const setupGitlabConfigInteractive = (): boolean => {
   const configPath = path.join(configDir, 'gitlab.toml')
 
   try {
-    if (!fs.existsSync(configDir)) fs.mkdirSync(configDir, { recursive: true })
+    ensurePrivateDirectory(configDir)
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : String(error)
     log.error(`Failed to create config directory: ${msg}`)
@@ -81,7 +82,7 @@ export const setupGitlabConfigInteractive = (): boolean => {
 
   const configContent = `# Geeto GitLab Configuration\n# Generated on ${new Date().toISOString()}\n\ntoken = "${token}"\nurl = "${instanceUrl}"\n`
   try {
-    fs.writeFileSync(configPath, configContent, 'utf8')
+    writeCredentialFile(configPath, configContent)
     log.success(`GitLab config saved to: ${configPath}`)
     return true
   } catch (error: unknown) {

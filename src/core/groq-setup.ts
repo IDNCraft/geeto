@@ -7,6 +7,7 @@ import path from 'node:path'
 
 import { askQuestion, confirm } from '../cli/input.js'
 import { GLOBAL_GEETO_DIR, resolveConfigPath } from '../utils/config.js'
+import { ensurePrivateDirectory, writeCredentialFile } from '../utils/credentials.js'
 import { openBrowser } from '../utils/exec.js'
 import { log } from '../utils/logging.js'
 
@@ -48,7 +49,7 @@ export const setupGroqConfigInteractive = (): boolean => {
   const configPath = path.join(configDir, 'groq.toml')
 
   try {
-    if (!fs.existsSync(configDir)) fs.mkdirSync(configDir, { recursive: true })
+    ensurePrivateDirectory(configDir)
   } catch (error) {
     log.error(`Failed to create config directory: ${(error as Error).message}`)
     return false
@@ -62,7 +63,7 @@ api_key = "${apiKey}"
 `
 
   try {
-    fs.writeFileSync(configPath, content, 'utf8')
+    writeCredentialFile(configPath, content)
     log.success(`Groq config saved to: ${configPath}`)
     return true
   } catch (error) {

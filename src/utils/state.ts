@@ -6,6 +6,7 @@ import fs from 'node:fs'
 import type { GeetoState } from '../types/index.js'
 
 import { ensureGeetoIgnored } from './config.js'
+import { ensurePrivateDirectory } from './credentials.js'
 import { STEP } from '../core/constants.js'
 
 const STATE_FILE = '.geeto/geeto-state.json'
@@ -43,9 +44,7 @@ export const saveState = (state: GeetoState): void => {
 
   // Ensure .geeto directory exists
   const stateDir = STATE_FILE.slice(0, STATE_FILE.lastIndexOf('/'))
-  if (!fs.existsSync(stateDir)) {
-    fs.mkdirSync(stateDir, { recursive: true })
-  }
+  ensurePrivateDirectory(stateDir)
 
   fs.writeFileSync(STATE_FILE, JSON.stringify(state, null, 2))
 }

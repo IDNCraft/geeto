@@ -2,7 +2,7 @@
  * Settings workflow - handles all settings menu interactions
  */
 
-import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs'
+import { existsSync, readFileSync, unlinkSync } from 'node:fs'
 import path from 'node:path'
 
 import { askQuestion, confirm } from '../cli/input.js'
@@ -23,6 +23,7 @@ import {
   saveBranchStrategyConfig,
   saveCommitConfig,
 } from '../utils/config.js'
+import { ensurePrivateDirectory, writeCredentialFile } from '../utils/credentials.js'
 import { log } from '../utils/logging.js'
 import { ScrambleProgress } from '../utils/scramble.js'
 
@@ -45,11 +46,10 @@ const moveConfigToGlobal = (name: string): boolean => {
   const localPath = configFilePath(name)
   if (!existsSync(localPath)) return false
   try {
-    if (!existsSync(GLOBAL_GEETO_DIR)) mkdirSync(GLOBAL_GEETO_DIR, { recursive: true })
-    writeFileSync(
+    ensurePrivateDirectory(GLOBAL_GEETO_DIR)
+    writeCredentialFile(
       path.join(GLOBAL_GEETO_DIR, `${name}.toml`),
-      readFileSync(localPath, 'utf8'),
-      'utf8'
+      readFileSync(localPath, 'utf8')
     )
     unlinkSync(localPath)
     return true
@@ -384,7 +384,7 @@ const syncOpenRouterModels = async (): Promise<void> => {
     const sdk = sdkModule as { getAvailableModelChoices?: () => Promise<unknown> }
     const fs = await import('node:fs')
     const outDir = path.join(process.cwd(), '.geeto')
-    await fs.promises.mkdir(outDir, { recursive: true })
+    ensurePrivateDirectory(outDir)
 
     if (sdk && typeof sdk.getAvailableModelChoices === 'function') {
       try {
@@ -636,7 +636,7 @@ const syncGeminiModels = async (): Promise<void> => {
 
     // Save to gemini-model.json
     const outDir = path.join(process.cwd(), '.geeto')
-    await fsModule.promises.mkdir(outDir, { recursive: true })
+    ensurePrivateDirectory(outDir)
     const outGeminiFile = path.join(outDir, 'gemini-model.json')
     await fsModule.promises.writeFile(outGeminiFile, JSON.stringify(simple, null, 2))
 
@@ -708,7 +708,7 @@ const syncGroqModels = async (): Promise<void> => {
 
     const fsModule = await import('node:fs')
     const outDir = path.join(process.cwd(), '.geeto')
-    await fsModule.promises.mkdir(outDir, { recursive: true })
+    ensurePrivateDirectory(outDir)
     const outFile = path.join(outDir, 'groq-model.json')
     await fsModule.promises.writeFile(outFile, JSON.stringify(simple, null, 2))
 
@@ -780,7 +780,7 @@ const syncCodexModels = async (): Promise<void> => {
 
     const fsModule = await import('node:fs')
     const outDir = path.join(process.cwd(), '.geeto')
-    await fsModule.promises.mkdir(outDir, { recursive: true })
+    ensurePrivateDirectory(outDir)
     const outFile = path.join(outDir, 'codex-model.json')
     await fsModule.promises.writeFile(outFile, JSON.stringify(simple, null, 2))
 
@@ -818,7 +818,7 @@ const syncOpenCodeModels = async (): Promise<boolean> => {
 
     const fsModule = await import('node:fs')
     const outDir = path.join(process.cwd(), '.geeto')
-    await fsModule.promises.mkdir(outDir, { recursive: true })
+    ensurePrivateDirectory(outDir)
     const outFile = path.join(outDir, 'opencode-model.json')
     const simple = selected.map((value, index) => ({
       label: `${index + 1}. ${models.find((model) => model.value === value)?.label ?? value}`,

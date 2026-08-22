@@ -7,6 +7,7 @@ import path from 'node:path'
 
 import { askQuestion, confirm } from '../cli/input.js'
 import { GLOBAL_GEETO_DIR, resolveConfigPath } from '../utils/config.js'
+import { ensurePrivateDirectory, writeCredentialFile } from '../utils/credentials.js'
 import { openBrowser } from '../utils/exec.js'
 import { log } from '../utils/logging.js'
 
@@ -64,8 +65,9 @@ export const setupGeminiConfigInteractive = (): boolean => {
   const configPath = path.join(configDir, 'gemini.toml')
 
   try {
-    if (!fs.existsSync(configDir)) {
-      fs.mkdirSync(configDir, { recursive: true })
+    const configDirExists = fs.existsSync(configDir)
+    ensurePrivateDirectory(configDir)
+    if (!configDirExists) {
       log.success(`Created config directory: ${configDir}`)
     }
   } catch (error) {
@@ -78,7 +80,7 @@ export const setupGeminiConfigInteractive = (): boolean => {
     `gemini_api_key = "${geminiKey}"\n`
 
   try {
-    fs.writeFileSync(configPath, configContent, 'utf8')
+    writeCredentialFile(configPath, configContent)
     log.success(`Gemini config saved to: ${configPath}`)
 
     try {

@@ -40,6 +40,9 @@ jobs:
     - name: Run TypeScript type checking
       run: bun run typecheck
 
+    - name: Run tests
+      run: bun run test
+
     - name: Build project
       run: bun run build
 
@@ -51,9 +54,8 @@ jobs:
       if: success()
       uses: actions/upload-artifact@v4
       with:
-        name: geeto-binaries-${{ matrix.node-version }}
+        name: geeto-binaries
         path: |
-          geeto
           geeto-linux
           geeto-linux-arm64
           geeto-windows.exe

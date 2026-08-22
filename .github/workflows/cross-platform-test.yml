@@ -5,46 +5,46 @@ on:
     workflows: ["Quality Checks"]
     types: [completed]
 
+permissions:
+  actions: read
+
 jobs:
   cross-platform-test:
-    name: Cross Platform Test
+    name: Smoke ${{ matrix.binary }} on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     strategy:
+      fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        include:
+          - os: ubuntu-latest
+            binary: geeto-linux
+          - os: ubuntu-24.04-arm
+            binary: geeto-linux-arm64
+          - os: windows-latest
+            binary: geeto-windows.exe
+          - os: macos-15-intel
+            binary: geeto-mac
+          - os: macos-latest
+            binary: geeto-mac-arm64
 
     steps:
     - name: Download build artifacts
       uses: actions/download-artifact@v4
       with:
-        name: geeto-binaries-20.x
+        name: geeto-binaries
         path: .
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        run-id: ${{ github.event.workflow_run.id }}
 
     - name: Make binary executable (Linux/macOS)
       if: runner.os != 'Windows'
-      run: |
-        chmod +x geeto-linux
-        chmod +x geeto-linux-arm
-        chmod +x geeto-mac
-        chmod +x geeto-mac-arm
+      run: chmod +x "${{ matrix.binary }}"
 
-    - name: Test Linux binary
-      if: runner.os == 'Linux'
-      run: ./geeto-linux --help | head -10
-
-    - name: Test Linux ARM binary
-      if: runner.os == 'Linux'
-      run: ./geeto-linux-arm --help | head -10
+    - name: Test Linux/macOS binary
+      if: runner.os != 'Windows'
+      run: ./${{ matrix.binary }} --help
 
     - name: Test Windows binary
       if: runner.os == 'Windows'
-      run: .\geeto-windows.exe --help | Select-Object -First 10
-
-    - name: Test macOS binary
-      if: runner.os == 'macOS'
-      run: ./geeto-mac --help | head -10
-
-    - name: Test macOS ARM binary
-      if: runner.os == 'macOS'
-      run: ./geeto-mac-arm --help | head -10
+      run: .\${{ matrix.binary }} --help

@@ -52,6 +52,7 @@
     "build": "tsc && chmod +x ./lib/index.js",
     "dev": "bun src/index.ts",
     "start": "./lib/index.js",
+    "test": "bun test",
     "clean": "rm -rf lib",
     "prebuild": "bun scripts/generate-prompts.ts && bun run clean",
     "typecheck": "tsc --noEmit",
@@ -103,7 +104,7 @@
     "eslint-plugin-unicorn": "^62.0.0",
     "husky": "^9.1.7",
     "lint-staged": "^16.2.7",
-    "markdownlint-cli": "^0.47.0",
+    "markdownlint-cli": "^0.48.0",
     "pinst": "^3.0.0",
     "prettier": "^3.8.1",
     "release-it": "^19.2.4",
@@ -123,6 +124,11 @@
     "@opencode-ai/sdk": "1.18.16",
     "openai": "^6.39.1",
     "opencode-ai": "1.18.16"
+  },
+  "overrides": {
+    "js-yaml": "4.3.1",
+    "markdown-it": "14.2.0",
+    "undici": "6.28.0"
   },
   "commitlint": {
     "extends": [

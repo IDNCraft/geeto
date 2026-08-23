@@ -7,7 +7,7 @@ import { askQuestion, confirm } from '../cli/input.js'
 import { multiSelect, select } from '../cli/menu.js'
 import { colors } from '../utils/colors.js'
 import { BOX_W } from '../utils/display.js'
-import { exec, execAsync, execSilent } from '../utils/exec.js'
+import { exec, execFile, execFileAsync, execFileSilent, execSilent } from '../utils/exec.js'
 import { getCurrentBranch } from '../utils/git.js'
 import { log } from '../utils/logging.js'
 import { ScrambleProgress } from '../utils/scramble.js'
@@ -25,9 +25,11 @@ const getLastCommit = (): {
 } | null => {
   try {
     const sep = '<<GTO>>'
-    const output = execSilent(
-      `git log -1 --format="%H${sep}%h${sep}%s${sep}%b${sep}%an${sep}%cr"`
-    ).trim()
+    const output = execFileSilent('git', [
+      'log',
+      '-1',
+      `--format=%H${sep}%h${sep}%s${sep}%b${sep}%an${sep}%cr`,
+    ]).trim()
     if (!output) return null
 
     const parts = output.split(sep)
@@ -131,7 +133,12 @@ export const handleAmend = async (): Promise<void> => {
 
   // Check for pushed commits warning
   try {
-    const pushed = execSilent(`git rev-list origin/${current}..HEAD --count`).trim()
+    const pushed = execFileSilent('git', [
+      'rev-list',
+      '--count',
+      '--end-of-options',
+      `origin/${current}..HEAD`,
+    ]).trim()
     if (pushed === '0') {
       console.log('')
       log.warn('This commit has already been pushed to remote!')
@@ -179,7 +186,7 @@ export const handleAmend = async (): Promise<void> => {
         const spinner = log.spinner()
         spinner.start('Staging files...')
         for (const file of selectedFiles) {
-          exec(`git add "${file}"`, true)
+          execFile('git', ['add', '--', file], true)
         }
         spinner.succeed(`Staged ${selectedFiles.length} files`)
       } else if (action === 'add-files') {
@@ -227,7 +234,7 @@ export const handleAmend = async (): Promise<void> => {
 
   try {
     if (newMessage) {
-      exec(`git commit --amend -m "${newMessage}"`, true)
+      execFile('git', ['commit', '--amend', '-m', newMessage], true)
     } else {
       exec('git commit --amend --no-edit', true)
     }
@@ -244,7 +251,7 @@ export const handleAmend = async (): Promise<void> => {
 
     // Offer force push if remote exists
     try {
-      execSilent(`git rev-parse --verify origin/${current}`)
+      execFileSilent('git', ['rev-parse', '--verify', '--end-of-options', `origin/${current}`])
       console.log('')
       const forcePush = confirm(
         `Force-push rewritten history to origin/${current}? This replaces the remote branch history.`
@@ -253,7 +260,7 @@ export const handleAmend = async (): Promise<void> => {
         const pushSpinner = new ScrambleProgress()
         pushSpinner.start([`Force pushing to origin/${current}`])
         try {
-          await execAsync(`git push --force-with-lease origin ${current}`, true)
+          await execFileAsync('git', ['push', '--force-with-lease', '--', 'origin', current], true)
           pushSpinner.succeed('Force pushed!')
         } catch {
           pushSpinner.fail('Failed to force push')

@@ -9,7 +9,7 @@ import path from 'node:path'
 
 import { confirm } from '../cli/input.js'
 import { colors } from '../utils/colors.js'
-import { execSilent } from '../utils/exec.js'
+import { execFileSilent, execSilent } from '../utils/exec.js'
 import { log } from '../utils/logging.js'
 import { VERSION } from '../version.js'
 
@@ -159,7 +159,7 @@ const detectInstallation = (): InstallInfo => {
   let version = VERSION
   if (binPath && binPath !== '(not found in PATH)') {
     try {
-      const out = execSilent(`"${binPath}" --version`).trim()
+      const out = execFileSilent(binPath, ['--version']).trim()
       // Extract version number (e.g. "geeto 0.7.0-alpha.2" → "0.7.0-alpha.2")
       const match = out.match(/\d+\.\d+\.\d+[\w.-]*/)
       if (match) version = match[0]

@@ -1,9 +1,20 @@
 /** Execute shell commands and helpers. */
 
-import { execSync, spawn } from 'node:child_process'
+import { execFileSync, execSync, spawn } from 'node:child_process'
 
 import { isDryRun, isMutatingCommand, logDryRun } from './dry-run.js'
 import { log } from './logging.js'
+
+export interface ExecResult {
+  code: number
+  stdout: string
+  stderr: string
+}
+
+const formatCommand = (executable: string, args: readonly string[]): string =>
+  [executable, ...args]
+    .map((part) => (/^[\w./:@%+=,-]+$/.test(part) ? part : JSON.stringify(part)))
+    .join(' ')
 
 /** Run a command and return its stdout with trailing whitespace removed. */
 export const exec = (command: string, silent = false): string => {
@@ -27,58 +38,74 @@ export const exec = (command: string, silent = false): string => {
   }
 }
 
-/**
- * Run a command asynchronously and return a promise that resolves when it exits.
- * Streams output to stdout/stderr unless `silent` is true, in which case output is captured.
- */
-export const execAsync = (
-  command: string,
-  silent: boolean = false
-): Promise<{ code: number; stdout: string; stderr: string }> => {
+/** Run an executable synchronously with dynamic values isolated as argv. */
+export const execFile = (executable: string, args: readonly string[], silent = false): string => {
+  const command = formatCommand(executable, args)
+  if (isDryRun() && isMutatingCommand(command)) {
+    logDryRun(command)
+    return ''
+  }
+
+  try {
+    const result = execFileSync(executable, args, {
+      encoding: 'utf8',
+      stdio: silent ? 'pipe' : 'inherit',
+      maxBuffer: 10 * 1024 * 1024,
+    })
+    return result?.trimEnd() || ''
+  } catch (error) {
+    if (!silent) {
+      log.error(`Error executing: ${command}`)
+    }
+    throw error
+  }
+}
+
+/** Run an executable asynchronously with dynamic values isolated as argv. */
+export const execFileAsync = (
+  executable: string,
+  args: readonly string[],
+  silent = false
+): Promise<ExecResult> => {
+  const command = formatCommand(executable, args)
   if (isDryRun() && isMutatingCommand(command)) {
     logDryRun(command)
     return Promise.resolve({ code: 0, stdout: '', stderr: '' })
   }
 
   return new Promise((resolve, reject) => {
-    try {
-      const child = spawn(command, { shell: true })
-      let out = ''
-      let err = ''
+    const child = spawn(executable, args, { shell: false })
+    let out = ''
+    let err = ''
 
-      if (child.stdout) {
-        child.stdout.on('data', (d: Buffer) => {
-          const s = d.toString()
-          out += s
-          if (!silent) process.stdout.write(s)
-        })
-      }
-      if (child.stderr) {
-        child.stderr.on('data', (d: Buffer) => {
-          const s = d.toString()
-          err += s
-          if (!silent) process.stderr.write(s)
-        })
+    child.stdout?.on('data', (data: Buffer) => {
+      const value = data.toString()
+      out += value
+      if (!silent) process.stdout.write(value)
+    })
+    child.stderr?.on('data', (data: Buffer) => {
+      const value = data.toString()
+      err += value
+      if (!silent) process.stderr.write(value)
+    })
+
+    child.on('error', reject)
+    child.on('close', (code) => {
+      if (code === 0) {
+        resolve({ code: code ?? 0, stdout: out.trim(), stderr: err.trim() })
+        return
       }
 
-      child.on('close', (code) => {
-        if (code === 0) {
-          resolve({ code: code ?? 0, stdout: out.trim(), stderr: err.trim() })
-        } else {
-          const errObj = new Error(`Command failed: ${command} (code ${code})`) as Error & {
-            code?: number
-            stdout?: string
-            stderr?: string
-          }
-          errObj.code = code ?? 0
-          errObj.stdout = out
-          errObj.stderr = err
-          reject(errObj)
-        }
-      })
-    } catch (error) {
-      reject(error)
-    }
+      const commandError = new Error(`Command failed: ${command} (code ${code})`) as Error & {
+        code?: number
+        stdout?: string
+        stderr?: string
+      }
+      commandError.code = code ?? 0
+      commandError.stdout = out
+      commandError.stderr = err
+      reject(commandError)
+    })
   })
 }
 
@@ -115,12 +142,17 @@ export const execSilent = (command: string): string => {
   return exec(command, true)
 }
 
+/** Run an executable silently with dynamic values isolated as argv. */
+export const execFileSilent = (executable: string, args: readonly string[]): string => {
+  return execFile(executable, args, true)
+}
+
 /** Check whether an executable is available on PATH. */
 export const commandExists = (command: string): boolean => {
   const platform = process.platform
   const checkCommand = platform === 'win32' ? 'where' : 'which'
   try {
-    exec(`${checkCommand} ${command}`, true)
+    execFile(checkCommand, [command], true)
     return true
   } catch {
     return false
@@ -136,16 +168,16 @@ export const openBrowser = (url: string): boolean => {
   const platform = process.platform
   try {
     if (platform === 'darwin') {
-      exec(`open "${url}"`, true)
+      execFile('open', [url], true)
       return true
     }
     if (platform === 'win32') {
-      exec(`start "" "${url}"`, true)
+      execFile('rundll32', ['url.dll,FileProtocolHandler', url], true)
       return true
     }
     // Linux / other
     if (commandExists('xdg-open')) {
-      exec(`xdg-open "${url}"`, true)
+      execFile('xdg-open', [url], true)
       return true
     }
     return false

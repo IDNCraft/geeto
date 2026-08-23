@@ -2,7 +2,7 @@
  * Git command execution utilities
  */
 
-import { exec } from './exec.js'
+import { exec, execFile } from './exec.js'
 
 /** Execute git command with error handling */
 export function gitExec(command: string, silent = false): string {
@@ -13,7 +13,7 @@ export function gitExec(command: string, silent = false): string {
 /** Get git config value */
 export function getGitConfig(key: string): string {
   try {
-    return gitExec(`config ${key}`, true).trim()
+    return execFile('git', ['config', key], true).trim()
   } catch {
     return ''
   }
@@ -30,7 +30,7 @@ export function getGitUser(): { name: string; email: string } {
 /** Get remote URL */
 export function getRemoteUrl(remote = 'origin'): string {
   try {
-    return gitExec(`remote get-url ${remote}`, true).trim()
+    return execFile('git', ['remote', 'get-url', remote], true).trim()
   } catch {
     return ''
   }

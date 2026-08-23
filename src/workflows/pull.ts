@@ -6,7 +6,7 @@
 import { confirm } from '../cli/input.js'
 import { select } from '../cli/menu.js'
 import { colors } from '../utils/colors.js'
-import { exec, execAsync, execSilent } from '../utils/exec.js'
+import { exec, execFileAsync, execSilent } from '../utils/exec.js'
 import { getCurrentBranch } from '../utils/git.js'
 import { log } from '../utils/logging.js'
 import { ScrambleProgress } from '../utils/scramble.js'
@@ -103,7 +103,7 @@ export const handlePull = async (): Promise<void> => {
   fetchProgress.start(['Fetching from remote'])
   try {
     const fetchRemote = tracking?.remote ?? 'origin'
-    await execAsync(`git fetch ${fetchRemote} --quiet`, true)
+    await execFileAsync('git', ['fetch', '--quiet', '--', fetchRemote], true)
     fetchProgress.succeed('Fetched latest from remote')
   } catch {
     fetchProgress.fail('Could not fetch from remote')
@@ -171,17 +171,18 @@ export const handlePull = async (): Promise<void> => {
   ])
 
   // Build the pull command
-  let pullCmd = `git pull ${remote} ${currentBranch}`
+  const pullArgs = ['pull']
   switch (strategy) {
     case 'rebase': {
-      pullCmd = `git pull --rebase ${remote} ${currentBranch}`
+      pullArgs.push('--rebase')
       break
     }
     case 'ff-only': {
-      pullCmd = `git pull --ff-only ${remote} ${currentBranch}`
+      pullArgs.push('--ff-only')
       break
     }
   }
+  pullArgs.push('--', remote, currentBranch)
 
   // Stash if dirty and user wants
   let stashed = false
@@ -203,7 +204,7 @@ export const handlePull = async (): Promise<void> => {
   pullProgress.start([`Pulling from ${remote}/${currentBranch}`])
 
   try {
-    const result = await execAsync(pullCmd, true)
+    const result = await execFileAsync('git', pullArgs, true)
     pullProgress.succeed('Pull completed successfully')
 
     if (result.stdout.trim()) {

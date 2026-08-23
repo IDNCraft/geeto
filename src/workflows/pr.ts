@@ -17,7 +17,7 @@ import {
 } from '../utils/ai-workflow.js'
 import { colors } from '../utils/colors.js'
 import { isDryRun, logDryRun } from '../utils/dry-run.js'
-import { execAsync, execSilent } from '../utils/exec.js'
+import { execFileAsync, execFileSilent, execSilent } from '../utils/exec.js'
 import {
   generateTextWithProvider,
   getAIProviderShortName,
@@ -35,7 +35,14 @@ import { loadState, saveState } from '../utils/state.js'
  */
 const getRecentCommits = (base: string, limit = 20): string[] => {
   try {
-    const output = execSilent(`git log --no-merges --format="- %s" ${base}..HEAD -${limit}`).trim()
+    const output = execFileSilent('git', [
+      'log',
+      '--no-merges',
+      '--format=- %s',
+      `-${limit}`,
+      '--end-of-options',
+      `${base}..HEAD`,
+    ]).trim()
     if (!output) return []
     return output.split('\n').filter(Boolean)
   } catch {
@@ -66,7 +73,7 @@ const getBaseBranches = (): string[] => {
  */
 const isBranchPushed = (branch: string): boolean => {
   try {
-    execSilent(`git rev-parse --verify origin/${branch}`)
+    execFileSilent('git', ['rev-parse', '--verify', '--end-of-options', `origin/${branch}`])
     return true
   } catch {
     return false
@@ -78,7 +85,12 @@ const isBranchPushed = (branch: string): boolean => {
  */
 const hasUnpushedCommits = (branch: string): boolean => {
   try {
-    const count = execSilent(`git rev-list origin/${branch}..HEAD --count`).trim()
+    const count = execFileSilent('git', [
+      'rev-list',
+      '--count',
+      '--end-of-options',
+      `origin/${branch}..HEAD`,
+    ]).trim()
     return Number.parseInt(count, 10) > 0
   } catch {
     return true // If remote doesn't exist, we definitely have unpushed
@@ -90,7 +102,14 @@ const hasUnpushedCommits = (branch: string): boolean => {
  */
 const getFirstCommitSubject = (base: string): string => {
   try {
-    return execSilent(`git log --format="%s" ${base}..HEAD --reverse -1`).trim()
+    return execFileSilent('git', [
+      'log',
+      '--format=%s',
+      '--reverse',
+      '-1',
+      '--end-of-options',
+      `${base}..HEAD`,
+    ]).trim()
   } catch {
     return ''
   }
@@ -101,7 +120,7 @@ const getFirstCommitSubject = (base: string): string => {
  */
 const getDiffForAI = (base: string, maxChars = 12000): string => {
   try {
-    const diff = execSilent(`git diff ${base}...HEAD`).trim()
+    const diff = execFileSilent('git', ['diff', '--end-of-options', `${base}...HEAD`]).trim()
     if (!diff) return ''
     // Truncate if too large to avoid token limits
     if (diff.length > maxChars) {
@@ -550,7 +569,7 @@ export const handleCreatePR = async (): Promise<void> => {
     const pushSpinner = log.spinner()
     pushSpinner.start(`Pushing ${current} to origin...`)
     try {
-      await execAsync(`git push -u origin ${current}`, true)
+      await execFileAsync('git', ['push', '-u', '--', 'origin', current], true)
       pushSpinner.succeed(`Pushed ${current} to origin`)
     } catch {
       pushSpinner.fail('Failed to push')

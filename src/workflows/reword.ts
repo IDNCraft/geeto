@@ -26,7 +26,7 @@ import {
 import { DEFAULT_GEMINI_MODEL } from '../utils/config.js'
 import { BOX_W } from '../utils/display.js'
 import { isDryRun, logDryRun } from '../utils/dry-run.js'
-import { execAsync, execSilent } from '../utils/exec.js'
+import { execFileAsync, execFileSilent, execSilent } from '../utils/exec.js'
 import {
   chooseModelForProvider,
   generateCommitMessageWithProvider,
@@ -68,7 +68,7 @@ const REC = '<<END>>'
 const getRecentCommits = (limit: number): CommitInfo[] => {
   try {
     const format = ['%H', '%h', '%s', '%b', '%an', '%cn', '%ai', '%ci', '%cr', '%D'].join(SEP)
-    const raw = execSilent(`git log --format="${format}${REC}" -${limit}`).trim()
+    const raw = execFileSilent('git', ['log', `--format=${format}${REC}`, `-${limit}`]).trim()
     if (!raw) return []
 
     return raw
@@ -115,7 +115,7 @@ const modBadge = (c: CommitInfo): string => {
 /** Get the diff (patch) for a specific commit. */
 const getCommitDiff = (hash: string): string => {
   try {
-    return execSilent(`git show --format= --patch ${hash}`).trim()
+    return execFileSilent('git', ['show', '--format=', '--patch', '--end-of-options', hash]).trim()
   } catch {
     return ''
   }
@@ -124,7 +124,7 @@ const getCommitDiff = (hash: string): string => {
 /** Get full commit message (title + body). */
 const getCommitMessage = (hash: string): string => {
   try {
-    return execSilent(`git log -1 --format=%B ${hash}`).trim()
+    return execFileSilent('git', ['log', '-1', '--format=%B', '--end-of-options', hash]).trim()
   } catch {
     return ''
   }
@@ -1194,7 +1194,7 @@ const executeRebase = async (
 
   let parentRef: string
   try {
-    parentRef = execSilent(`git rev-parse ${oldestHash}^`).trim()
+    parentRef = execFileSilent('git', ['rev-parse', '--end-of-options', `${oldestHash}^`]).trim()
   } catch {
     parentRef = '--root'
   }
@@ -1236,7 +1236,7 @@ const executeRebase = async (
           const pushProgress = new ScrambleProgress()
           pushProgress.start([`Force pushing to origin/${branch}`])
           try {
-            await execAsync(`git push --force-with-lease origin "${branch}"`, true)
+            await execFileAsync('git', ['push', '--force-with-lease', '--', 'origin', branch], true)
             pushProgress.succeed(`Force pushed ${branch} to remote`)
           } catch (pushError) {
             pushProgress.fail('Force push failed')

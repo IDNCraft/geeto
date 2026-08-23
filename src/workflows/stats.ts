@@ -4,7 +4,7 @@
  */
 
 import { colors } from '../utils/colors.js'
-import { execSilent } from '../utils/exec.js'
+import { execFileSilent, execSilent } from '../utils/exec.js'
 import { getCurrentBranch } from '../utils/git.js'
 import { log } from '../utils/logging.js'
 
@@ -133,7 +133,13 @@ const getMonthlyActivity = (): Array<{ month: string; count: number }> => {
     try {
       count =
         Number.parseInt(
-          execSilent(`git rev-list --count --after="${after}" --before="${before}" HEAD`).trim(),
+          execFileSilent('git', [
+            'rev-list',
+            '--count',
+            `--after=${after}`,
+            `--before=${before}`,
+            'HEAD',
+          ]).trim(),
           10
         ) || 0
     } catch {
@@ -215,21 +221,30 @@ const getRecentActivity = (): {
 
   try {
     todayCommits =
-      Number.parseInt(execSilent(`git rev-list --count --after="${todayStr}" HEAD`).trim(), 10) || 0
+      Number.parseInt(
+        execFileSilent('git', ['rev-list', '--count', `--after=${todayStr}`, 'HEAD']).trim(),
+        10
+      ) || 0
   } catch {
     // skip
   }
 
   try {
     weekCommits =
-      Number.parseInt(execSilent(`git rev-list --count --after="${weekAgo}" HEAD`).trim(), 10) || 0
+      Number.parseInt(
+        execFileSilent('git', ['rev-list', '--count', `--after=${weekAgo}`, 'HEAD']).trim(),
+        10
+      ) || 0
   } catch {
     // skip
   }
 
   try {
     monthCommits =
-      Number.parseInt(execSilent(`git rev-list --count --after="${monthAgo}" HEAD`).trim(), 10) || 0
+      Number.parseInt(
+        execFileSilent('git', ['rev-list', '--count', `--after=${monthAgo}`, 'HEAD']).trim(),
+        10
+      ) || 0
   } catch {
     // skip
   }

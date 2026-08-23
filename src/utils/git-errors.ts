@@ -3,8 +3,10 @@
  * Handles common git operation failures with user-friendly recovery options
  */
 
+import { existsSync } from 'node:fs'
+
 import { colors } from './colors.js'
-import { exec, execAsync, execSilent } from './exec.js'
+import { exec, execFile, execFileAsync, execSilent } from './exec.js'
 import { log } from './logging.js'
 import { ScrambleProgress } from './scramble.js'
 import { confirm } from '../cli/input.js'
@@ -42,8 +44,7 @@ export const isRebaseInProgress = (): boolean => {
     const gitDir = execSilent('git rev-parse --git-dir')
     const rebaseDir = `${gitDir}/rebase-merge`
     const rebaseApply = `${gitDir}/rebase-apply`
-    execSilent(`test -d "${rebaseDir}" || test -d "${rebaseApply}"`)
-    return true
+    return existsSync(rebaseDir) || existsSync(rebaseApply)
   } catch {
     return false
   }
@@ -133,18 +134,19 @@ export const safeCheckout = async (
   options?: { create?: boolean; force?: boolean; context?: string }
 ): Promise<{ success: boolean; error?: string; commitNeeded?: boolean }> => {
   try {
+    if (branchName.startsWith('-')) {
+      throw new Error('Branch names starting with - are unsupported')
+    }
+
     // For creating new branch or force checkout, proceed directly
     if (options?.create || options?.force) {
-      const cmd = options.create
-        ? `git checkout -b "${branchName}"`
-        : `git checkout -f "${branchName}"`
-      exec(cmd, true)
+      execFile('git', ['checkout', options.create ? '-b' : '-f', branchName], true)
       return { success: true }
     }
 
     // Try checkout first - git will allow it if changes don't conflict
     try {
-      exec(`git checkout "${branchName}"`, true)
+      execFile('git', ['checkout', branchName], true)
       return { success: true }
     } catch (checkoutError) {
       const checkoutErrMsg =
@@ -159,7 +161,7 @@ export const safeCheckout = async (
         console.log('')
         log.info('Trying checkout with merge (-m flag)...')
         try {
-          exec(`git checkout -m "${branchName}"`, true)
+          execFile('git', ['checkout', '-m', branchName], true)
 
           // Check if merge resulted in conflicts
           const status = execSilent('git status --porcelain')
@@ -236,7 +238,7 @@ export const safeCheckout = async (
         }
 
         // User chose stash or force - retry checkout
-        exec(`git checkout "${branchName}"`, true)
+        execFile('git', ['checkout', branchName], true)
         return { success: true }
       }
 
@@ -319,15 +321,16 @@ export const safeMerge = async (
     }
 
     // Build merge command
-    let cmd = `git merge ${sourceBranch}`
+    const args = ['merge']
     if (options?.noFf) {
-      cmd += ' --no-ff'
+      args.push('--no-ff')
     }
     if (options?.squash) {
-      cmd += ' --squash'
+      args.push('--squash')
     }
+    args.push('--', sourceBranch)
 
-    exec(cmd)
+    execFile('git', args)
     return { success: true }
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : String(error)
@@ -419,20 +422,19 @@ export const safePush = async (
 ): Promise<{ success: boolean; error?: string }> => {
   const branch = branchName ?? execSilent('git branch --show-current')
 
-  let cmd = `git push`
-  if (options?.setUpstream) {
-    cmd += ` -u origin "${branch}"`
-  }
+  const args = ['push']
+  if (options?.setUpstream) args.push('-u')
   if (options?.force) {
-    cmd += ' --force'
+    args.push('--force')
   }
+  if (options?.setUpstream) args.push('--', 'origin', branch)
 
   let retries = 0
   const maxRetries = 3
 
   while (retries < maxRetries) {
     try {
-      await execAsync(cmd, false)
+      await execFileAsync('git', args, false)
       return { success: true }
     } catch (error) {
       const errMsg = error instanceof Error ? error.message : String(error)
@@ -474,7 +476,7 @@ export const safePush = async (
             console.log('')
             const pullSpinner = new ScrambleProgress()
             pullSpinner.start([`Pulling with rebase from origin/${branch}`])
-            exec(`git pull --rebase origin "${branch}"`)
+            execFile('git', ['pull', '--rebase', '--', 'origin', branch])
             pullSpinner.succeed('Successfully pulled and rebased')
             // Retry push after successful pull
             retries++
@@ -527,17 +529,16 @@ export const safeCommit = async (
     // Check if there's a merge in progress
     if (isMergeInProgress()) {
       // For merge commits, allow commit without message check
-      let cmd = 'git commit'
+      const args = ['commit']
       if (options?.noVerify) {
-        cmd += ' --no-verify'
+        args.push('--no-verify')
       }
       if (!message || message.trim() === '') {
-        cmd += ' --no-edit'
+        args.push('--no-edit')
       } else {
-        const escapedMessage = message.replaceAll('"', String.raw`\\"`)
-        cmd += ` -m "${escapedMessage}"`
+        args.push('-m', message)
       }
-      exec(cmd)
+      execFile('git', args)
       return { success: true }
     }
 
@@ -559,19 +560,18 @@ export const safeCommit = async (
     }
 
     // Build commit command
-    let cmd = 'git commit'
+    const args = ['commit']
     if (message && message.trim() !== '') {
-      const escapedMessage = message.replaceAll('"', String.raw`\\"`)
-      cmd += ` -m "${escapedMessage}"`
+      args.push('-m', message)
     }
     if (options?.amend) {
-      cmd += ' --amend'
+      args.push('--amend')
     }
     if (options?.noVerify) {
-      cmd += ' --no-verify'
+      args.push('--no-verify')
     }
 
-    exec(cmd)
+    execFile('git', args)
     return { success: true }
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : String(error)
@@ -614,11 +614,10 @@ export const safePull = async (
       log.success('Changes stashed')
     }
 
-    const branchArg = branch ? ` ${branch}` : ''
     console.log('')
     const pullSpinner = new ScrambleProgress()
     pullSpinner.start(['Pulling from remote'])
-    await execAsync(`git pull ${remote}${branchArg}`, true)
+    await execFileAsync('git', ['pull', '--', remote, ...(branch ? [branch] : [])], true)
     pullSpinner.succeed('Pull completed')
 
     // If we stashed, ask if user wants to pop

@@ -7,7 +7,7 @@ import { confirm } from '../cli/input.js'
 import { multiSelect } from '../cli/menu.js'
 import { colors } from '../utils/colors.js'
 import { getProtectedBranches } from '../utils/config.js'
-import { exec, execAsync, execSilent } from '../utils/exec.js'
+import { exec, execFile, execFileAsync, execSilent } from '../utils/exec.js'
 import { getCurrentBranch } from '../utils/git.js'
 import { log } from '../utils/logging.js'
 
@@ -287,7 +287,7 @@ export const handleInteractiveCleanup = async (): Promise<void> => {
         const spinner = log.spinner()
         spinner.start(`Deleting local: ${branch.name}...`)
         try {
-          exec(`git branch -d "${branch.name}"`, true)
+          execFile('git', ['branch', '-d', '--', branch.name], true)
           spinner.succeed(`Deleted local: ${branch.name}`)
           localSuccessCount++
         } catch {
@@ -302,7 +302,7 @@ export const handleInteractiveCleanup = async (): Promise<void> => {
             const spinner2 = log.spinner()
             spinner2.start(`Force deleting local: ${branch.name}...`)
             try {
-              exec(`git branch -D "${branch.name}"`, true)
+              execFile('git', ['branch', '-D', '--', branch.name], true)
               spinner2.succeed(`Force deleted local: ${branch.name}`)
               localSuccessCount++
             } catch {
@@ -326,7 +326,11 @@ export const handleInteractiveCleanup = async (): Promise<void> => {
         const spinner = log.spinner()
         spinner.start(`Deleting remote: ${branch.name}...`)
         try {
-          await execAsync(`git push --no-verify origin --delete "${branch.name}"`, true)
+          await execFileAsync(
+            'git',
+            ['push', '--no-verify', '--delete', '--', 'origin', branch.name],
+            true
+          )
           spinner.succeed(`Deleted remote: ${branch.name}`)
           remoteSuccessCount++
         } catch (error) {

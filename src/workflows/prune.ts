@@ -5,7 +5,7 @@
 
 import { confirm } from '../cli/input.js'
 import { colors } from '../utils/colors.js'
-import { execAsync, execSilent } from '../utils/exec.js'
+import { execFileAsync, execSilent } from '../utils/exec.js'
 import { log } from '../utils/logging.js'
 import { ScrambleProgress } from '../utils/scramble.js'
 
@@ -14,7 +14,7 @@ import { ScrambleProgress } from '../utils/scramble.js'
  */
 const getStaleBranches = async (remote: string): Promise<string[]> => {
   try {
-    const result = await execAsync(`git remote prune ${remote} --dry-run`, true)
+    const result = await execFileAsync('git', ['remote', 'prune', '--dry-run', '--', remote], true)
     const output = result.stdout.trim()
     if (!output) return []
 
@@ -101,7 +101,7 @@ export const handlePrune = async (): Promise<void> => {
       console.log('')
       const spinner = new ScrambleProgress()
       spinner.start([`Pruning ${remote}`])
-      await execAsync(`git remote prune ${remote}`, true)
+      await execFileAsync('git', ['remote', 'prune', '--', remote], true)
       spinner.succeed(
         `Pruned ${stale.length} branch${stale.length === 1 ? '' : 'es'} from ${remote}`
       )

@@ -24,7 +24,7 @@ import {
   getStepName,
   getStepProgress,
 } from '../utils/display.js'
-import { exec } from '../utils/exec.js'
+import { exec, execFile } from '../utils/exec.js'
 import {
   getChangedFiles,
   getChangedFilesWithStatus,
@@ -399,7 +399,7 @@ export async function handleStagingStep(
           const selectedFiles = await multiSelect('Select files to stage:', fileOptions)
           if (selectedFiles.length > 0) {
             for (const file of selectedFiles) {
-              exec(`git add "${file}"`, true)
+              execFile('git', ['add', '--', file], true)
             }
             log.success(`Staged ${selectedFiles.length} files`)
           } else {

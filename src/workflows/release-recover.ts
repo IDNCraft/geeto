@@ -7,7 +7,7 @@ import { confirm } from '../cli/input.js'
 import { select } from '../cli/menu.js'
 import { colors } from '../utils/colors.js'
 import { BOX_W } from '../utils/display.js'
-import { exec, execAsync } from '../utils/exec.js'
+import { exec, execFile, execFileAsync } from '../utils/exec.js'
 import { log } from '../utils/logging.js'
 import { ScrambleProgress } from '../utils/scramble.js'
 
@@ -120,7 +120,7 @@ export const handleRecoverTags = async (): Promise<void> => {
     tagSpinner.start(`Creating tag ${colors.yellow}${mt.tag}${colors.reset}...`)
 
     try {
-      exec(`git tag -a ${mt.tag} ${mt.hash} -m "Release ${mt.tag}"`, true)
+      execFile('git', ['tag', '-a', '-m', `Release ${mt.tag}`, '--', mt.tag, mt.hash], true)
       tagSpinner.succeed(`Tag ${mt.tag} created`)
       successCount++
     } catch (error) {
@@ -146,7 +146,7 @@ export const handleRecoverTags = async (): Promise<void> => {
       const pushSpinner = new ScrambleProgress()
       pushSpinner.start(['Pushing tags to remote'])
       try {
-        await execAsync('git push --tags --no-verify', true)
+        await execFileAsync('git', ['push', '--tags', '--no-verify'], true)
         pushSpinner.succeed('Tags pushed to remote')
       } catch (error) {
         const stderr = (error as { stderr?: string }).stderr?.trim()

@@ -5,7 +5,7 @@
 
 import { select } from '../cli/menu.js'
 import { colors } from '../utils/colors.js'
-import { execAsync, execSilent } from '../utils/exec.js'
+import { execFileAsync, execSilent } from '../utils/exec.js'
 import { getCurrentBranch } from '../utils/git.js'
 import { log } from '../utils/logging.js'
 
@@ -65,18 +65,18 @@ export const handleFetch = async (): Promise<void> => {
       : []),
   ])
 
-  let fetchCmd: string
+  let fetchArgs: string[]
 
   if (mode === 'pick') {
     const remote = await select(
       'Which remote should be fetched?',
       remotes.map((r) => ({ label: r, value: r }))
     )
-    fetchCmd = `git fetch ${remote}`
+    fetchArgs = ['fetch', '--', remote]
   } else if (mode === 'all-prune') {
-    fetchCmd = 'git fetch --all --prune'
+    fetchArgs = ['fetch', '--all', '--prune']
   } else {
-    fetchCmd = 'git fetch --all'
+    fetchArgs = ['fetch', '--all']
   }
 
   console.log('')
@@ -84,7 +84,7 @@ export const handleFetch = async (): Promise<void> => {
   spinner.start('Fetching from remote...')
 
   try {
-    await execAsync(fetchCmd, true)
+    await execFileAsync('git', fetchArgs, true)
     spinner.succeed('Fetch completed')
   } catch (error) {
     spinner.fail('Fetch failed')

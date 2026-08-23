@@ -18,7 +18,7 @@ import { STEP } from '../core/constants.js'
 import { colors } from '../utils/colors.js'
 import { displayCompletionSummary, displayCurrentProviderStatus } from '../utils/display.js'
 import { isDryRun } from '../utils/dry-run.js'
-import { exec } from '../utils/exec.js'
+import { exec, execFile } from '../utils/exec.js'
 import { getCurrentBranch, getStagedFiles } from '../utils/git.js'
 import { log } from '../utils/logging.js'
 import { loadState, preserveProviderState, saveState } from '../utils/state.js'
@@ -356,10 +356,15 @@ export const main = async (opts?: MainOpts): Promise<void> => {
     try {
       let hasCommitsToPush = false
       try {
-        const remoteRef = exec(`git ls-remote --heads origin "${branchToCheck}"`, true).trim()
+        const remoteRef = execFile(
+          'git',
+          ['ls-remote', '--heads', '--', 'origin', branchToCheck],
+          true
+        ).trim()
         if (remoteRef) {
-          const commitsAhead = exec(
-            `git rev-list HEAD...origin/"${branchToCheck}" --count`,
+          const commitsAhead = execFile(
+            'git',
+            ['rev-list', '--count', '--end-of-options', `HEAD...origin/${branchToCheck}`],
             true
           ).trim()
           hasCommitsToPush = commitsAhead !== '0' && commitsAhead !== ''

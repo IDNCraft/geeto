@@ -3,7 +3,7 @@
  * Installs/removes short aliases for geeto commands in shell config.
  */
 
-import { execSync } from 'node:child_process'
+import { execFileSync, execSync } from 'node:child_process'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
@@ -64,13 +64,13 @@ const MARKER_END = '# <<< geeto aliases <<<'
 const systemBinaryPath = (name: string): string => {
   try {
     if (isWindows()) {
-      const out = execSync(`where ${name} 2>NUL`, {
+      const out = execFileSync('where', [name], {
         encoding: 'utf8',
         stdio: ['pipe', 'pipe', 'pipe'],
       }).trim()
       return out.split('\n')[0] ?? ''
     }
-    const out = execSync(`command -v ${name} 2>/dev/null`, {
+    const out = execFileSync('which', [name], {
       encoding: 'utf8',
       stdio: ['pipe', 'pipe', 'pipe'],
     }).trim()

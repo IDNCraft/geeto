@@ -10,7 +10,7 @@ import { buildProjectLink, extractCardIdFromBranch } from '../utils/branch-namin
 import { colors } from '../utils/colors.js'
 import { getBranchStrategyConfig } from '../utils/config.js'
 import { BOX_W } from '../utils/display.js'
-import { execSilent } from '../utils/exec.js'
+import { execFileSilent, execSilent } from '../utils/exec.js'
 import { getRemoteUrl } from '../utils/git-commands.js'
 import { getCurrentBranch } from '../utils/git.js'
 import { log } from '../utils/logging.js'
@@ -58,9 +58,12 @@ const getCommits = (limit: number, offset = 0): CommitEntry[] => {
       '%P', // parent hashes (multiple = merge)
     ].join(fieldSep)
 
-    const output = execSilent(
-      `git log --format="${format}${recordSep}" --skip=${offset} -${limit}`
-    ).trim()
+    const output = execFileSilent('git', [
+      'log',
+      `--format=${format}${recordSep}`,
+      `--skip=${offset}`,
+      `-${limit}`,
+    ]).trim()
     if (!output) return []
 
     // Split on record separator first (handles multi-line body)
@@ -106,7 +109,11 @@ const getCommits = (limit: number, offset = 0): CommitEntry[] => {
 /**
  * Fetch commits with extra git log args (e.g. --author filter)
  */
-const getCommitsFiltered = (limit: number, offset: number, extraArgs: string): CommitEntry[] => {
+const getCommitsFiltered = (
+  limit: number,
+  offset: number,
+  extraArgs: readonly string[]
+): CommitEntry[] => {
   try {
     const fieldSep = '<<GTO>>'
     const recordSep = '<<END>>'
@@ -125,9 +132,13 @@ const getCommitsFiltered = (limit: number, offset: number, extraArgs: string): C
       '%P',
     ].join(fieldSep)
 
-    const output = execSilent(
-      `git log ${extraArgs} --format="${format}${recordSep}" --skip=${offset} -${limit}`
-    ).trim()
+    const output = execFileSilent('git', [
+      'log',
+      ...extraArgs,
+      `--format=${format}${recordSep}`,
+      `--skip=${offset}`,
+      `-${limit}`,
+    ]).trim()
     if (!output) return []
 
     return output
@@ -374,9 +385,14 @@ const renderCommit = async (
   // For merge commits: list the commits that were merged (hash + subject only)
   if (commit.isMerge && commit.parents.length >= 2) {
     try {
-      const mergedLog = execSilent(
-        `git log --oneline ${commit.parents[0]}..${commit.parents[1]} --format="%h %s" -10`
-      ).trim()
+      const mergedLog = execFileSilent('git', [
+        'log',
+        '--oneline',
+        '--format=%h %s',
+        '-10',
+        '--end-of-options',
+        `${commit.parents[0]}..${commit.parents[1]}`,
+      ]).trim()
       if (mergedLog) {
         const mergedLines = mergedLog.split('\n').filter(Boolean)
         console.log(
@@ -501,9 +517,8 @@ export const handleHistory = async (): Promise<void> => {
 
   while (keepGoing) {
     // Build git log args
-    const authorArg = authorFilter ? `--author="${authorFilter}"` : ''
     const commits = authorFilter
-      ? getCommitsFiltered(PAGE_SIZE, offset, authorArg)
+      ? getCommitsFiltered(PAGE_SIZE, offset, [`--author=${authorFilter}`])
       : getCommits(PAGE_SIZE, offset)
 
     if (commits.length === 0 && offset === 0) {

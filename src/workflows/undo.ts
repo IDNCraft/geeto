@@ -7,7 +7,7 @@ import { confirm } from '../cli/input.js'
 import { select } from '../cli/menu.js'
 import { colors } from '../utils/colors.js'
 import { BOX_W } from '../utils/display.js'
-import { exec, execSilent } from '../utils/exec.js'
+import { exec, execFile, execFileSilent, execSilent } from '../utils/exec.js'
 import { getCurrentBranch } from '../utils/git.js'
 import { log } from '../utils/logging.js'
 
@@ -23,7 +23,7 @@ const detectLastAction = (): {
 } | null => {
   try {
     const sep = '<<GTO>>'
-    const output = execSilent(`git reflog -2 --format="%H${sep}%gd${sep}%gs"`).trim()
+    const output = execFileSilent('git', ['reflog', '-2', `--format=%H${sep}%gd${sep}%gs`]).trim()
     if (!output) return null
 
     const lines = output.split('\n').filter(Boolean)
@@ -191,7 +191,7 @@ const undoCommit = async (_prevHash: string): Promise<void> => {
   const spinner = log.spinner()
   spinner.start('Undoing commit...')
   try {
-    exec(`git reset ${flag} HEAD~1`, true)
+    execFile('git', ['reset', flag, 'HEAD~1'], true)
     spinner.succeed(`Commit undone (${action} reset)`)
     showCurrentState()
   } catch {
@@ -225,7 +225,7 @@ const undoAmend = async (prevHash: string): Promise<void> => {
   const spinner = log.spinner()
   spinner.start('Undoing amend...')
   try {
-    exec(`git reset ${flag} ${prevHash}`, true)
+    execFile('git', ['reset', flag, prevHash], true)
     spinner.succeed('Amend undone!')
     showCurrentState()
   } catch {
@@ -319,7 +319,7 @@ const undoCheckout = (description: string): void => {
   const spinner = log.spinner()
   spinner.start(`Switching to ${fromBranch}...`)
   try {
-    exec(`git checkout ${fromBranch}`, true)
+    execFile('git', ['switch', '--', fromBranch], true)
     spinner.succeed(`Switched back to ${fromBranch}`)
   } catch {
     spinner.fail(`Failed to switch to ${fromBranch}`)
@@ -360,7 +360,7 @@ const undoPull = async (prevHash: string): Promise<void> => {
   const spinner = log.spinner()
   spinner.start('Undoing pull...')
   try {
-    exec(`git reset ${flag} ${prevHash}`, true)
+    execFile('git', ['reset', flag, prevHash], true)
     spinner.succeed('Pull undone!')
     showCurrentState()
   } catch {
@@ -407,7 +407,7 @@ const undoRebase = async (prevHash: string): Promise<void> => {
   const spinner = log.spinner()
   spinner.start('Undoing rebase...')
   try {
-    exec(`git reset --hard ${prevHash}`, true)
+    execFile('git', ['reset', '--hard', prevHash], true)
     spinner.succeed('Rebase undone!')
     showCurrentState()
   } catch {
@@ -430,7 +430,7 @@ const undoReset = (prevHash: string): void => {
   const spinner = log.spinner()
   spinner.start('Reversing reset...')
   try {
-    exec(`git reset --hard ${prevHash}`, true)
+    execFile('git', ['reset', '--hard', prevHash], true)
     spinner.succeed('Reset reversed!')
     showCurrentState()
   } catch {
@@ -476,7 +476,7 @@ const undoGeneric = async (prevHash: string): Promise<void> => {
   const spinner = log.spinner()
   spinner.start('Undoing...')
   try {
-    exec(`git reset ${flag} ${prevHash}`, true)
+    execFile('git', ['reset', flag, prevHash], true)
     spinner.succeed('Action undone!')
     showCurrentState()
   } catch {

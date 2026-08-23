@@ -21,7 +21,7 @@ import { select } from '../cli/menu.js'
 import { getConfiguredAIProvider } from '../utils/ai-workflow.js'
 import { colors } from '../utils/colors.js'
 import { BOX_W } from '../utils/display.js'
-import { exec, execAsync } from '../utils/exec.js'
+import { exec, execFile, execFileAsync } from '../utils/exec.js'
 import {
   chooseModelForProvider,
   generateTextWithProvider,
@@ -54,16 +54,24 @@ const fetchReleasesWithBody = async (cli: string): Promise<ReleaseInfo[]> => {
   try {
     if (cli === 'gh') {
       // GitHub: use REST API which includes body
-      const result = await execAsync(
-        `gh api repos/{owner}/{repo}/releases --paginate --jq '[.[] | {tagName: .tag_name, name: .name, body: .body, publishedAt: .published_at, isPrerelease: .prerelease, isDraft: .draft}]'`,
+      const result = await execFileAsync(
+        'gh',
+        [
+          'api',
+          'repos/{owner}/{repo}/releases',
+          '--paginate',
+          '--jq',
+          '[.[] | {tagName: .tag_name, name: .name, body: .body, publishedAt: .published_at, isPrerelease: .prerelease, isDraft: .draft}]',
+        ],
         true
       )
       const data = JSON.parse(result.stdout.trim()) as ReleaseInfo[]
       return Array.isArray(data) ? data : []
     }
     // GitLab: glab release list supports body via --json
-    const result = await execAsync(
-      `${cli} release list --per-page 100 --json tag_name,name,description,released_at`,
+    const result = await execFileAsync(
+      cli,
+      ['release', 'list', '--per-page', '100', '--json', 'tag_name,name,description,released_at'],
       true
     )
     const raw = JSON.parse(result.stdout.trim()) as Array<{
@@ -229,7 +237,7 @@ const updateReleaseNotes = async (
   const tmpFile = path.join(tmpdir(), `geeto-merge-${Date.now()}.md`)
   try {
     writeFileSync(tmpFile, notes, 'utf8')
-    await execAsync(`${cli} release edit ${tagName} --notes-file "${tmpFile}"`, true)
+    await execFileAsync(cli, ['release', 'edit', '--notes-file', tmpFile, '--', tagName], true)
     return true
   } catch (error) {
     const stderr = (error as { stderr?: string }).stderr?.trim()
@@ -252,8 +260,9 @@ const createRelease = async (cli: string, tagName: string, notes: string): Promi
   const tmpFile = path.join(tmpdir(), `geeto-merge-${Date.now()}.md`)
   try {
     writeFileSync(tmpFile, notes, 'utf8')
-    await execAsync(
-      `${cli} release create ${tagName} --title "${tagName}" --notes-file "${tmpFile}"`,
+    await execFileAsync(
+      cli,
+      ['release', 'create', '--title', tagName, '--notes-file', tmpFile, '--', tagName],
       true
     )
     return true
@@ -276,7 +285,7 @@ const createRelease = async (cli: string, tagName: string, notes: string): Promi
  */
 const deleteRelease = async (cli: string, tagName: string): Promise<boolean> => {
   try {
-    await execAsync(`${cli} release delete ${tagName} --yes`, true)
+    await execFileAsync(cli, ['release', 'delete', '--yes', '--', tagName], true)
     return true
   } catch (error) {
     const stderr = (error as { stderr?: string }).stderr?.trim()
@@ -568,7 +577,7 @@ export const handleMergeReleases = async (): Promise<void> => {
 
   // Check CLI availability
   try {
-    await execAsync(`${cli} --version`, true)
+    await execFileAsync(cli, ['--version'], true)
   } catch {
     log.error(
       `${platformName} CLI (${cli}) is not installed.${cli === 'gh' ? ' Install it: https://cli.github.com' : ' Install it: https://gitlab.com/gitlab-org/cli'}`
@@ -739,7 +748,11 @@ export const handleMergeReleases = async (): Promise<void> => {
           const doCommit = confirm('Commit version bump?')
           if (doCommit) {
             exec('git add package.json src/version.ts', true)
-            exec(`git commit --no-verify -m "chore(release): bump version to v${baseVer}"`, true)
+            execFile(
+              'git',
+              ['commit', '--no-verify', '-m', `chore(release): bump version to v${baseVer}`],
+              true
+            )
             log.success('Version bump committed')
           }
         } catch (error) {

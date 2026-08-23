@@ -6,7 +6,7 @@
 import { confirm } from '../cli/input.js'
 import { multiSelect, select } from '../cli/menu.js'
 import { colors } from '../utils/colors.js'
-import { exec, execSilent } from '../utils/exec.js'
+import { exec, execFile, execFileSilent, execSilent } from '../utils/exec.js'
 import { getCurrentBranch } from '../utils/git.js'
 import { log } from '../utils/logging.js'
 
@@ -58,9 +58,14 @@ const getUniqueCommits = (
 ): Array<{ hash: string; shortHash: string; subject: string; date: string; author: string }> => {
   try {
     const current = getCurrentBranch()
-    const output = execSilent(
-      `git log --no-merges --format="%H|%h|%s|%cr|%an" ${current}..${sourceRef} -${limit}`
-    ).trim()
+    const output = execFileSilent('git', [
+      'log',
+      '--no-merges',
+      '--format=%H|%h|%s|%cr|%an',
+      `-${limit}`,
+      '--end-of-options',
+      `${current}..${sourceRef}`,
+    ]).trim()
     if (!output) return []
 
     return output
@@ -239,7 +244,7 @@ export const handleCherryPick = async (): Promise<void> => {
     pickSpinner.start(`Cherry-picking: ${label}`)
 
     try {
-      exec(`git cherry-pick "${hash}"`, true)
+      execFile('git', ['cherry-pick', '--', hash], true)
       pickSpinner.succeed(`Cherry-picked: ${label}`)
       successCount++
     } catch {

@@ -1,7 +1,7 @@
 /** Git helpers */
 
 import { getBranchStrategyConfig } from './config.js'
-import { exec, execSilent } from './exec.js'
+import { exec, execFileSilent, execSilent } from './exec.js'
 import {
   generateBranchNameWithProvider,
   getAIProviderDisplayName,
@@ -31,7 +31,7 @@ export { handleBranchNaming } from './branch-naming.js'
  */
 export const branchExists = (branchName: string): boolean => {
   try {
-    execSilent(`git show-ref --verify --quiet refs/heads/${branchName}`)
+    execFileSilent('git', ['show-ref', '--verify', '--quiet', '--', `refs/heads/${branchName}`])
     return true
   } catch {
     return false
@@ -43,7 +43,7 @@ export const branchExists = (branchName: string): boolean => {
  */
 export const remoteBranchExists = (branchName: string): boolean => {
   try {
-    execSilent(`git ls-remote --exit-code --heads origin ${branchName}`)
+    execFileSilent('git', ['ls-remote', '--exit-code', '--heads', '--', 'origin', branchName])
     return true
   } catch {
     return false

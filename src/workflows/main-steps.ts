@@ -6,7 +6,7 @@ import { select } from '../cli/menu.js'
 import { STEP } from '../core/constants.js'
 import { colors } from '../utils/colors.js'
 import { getStepProgress } from '../utils/display.js'
-import { exec, execAsync } from '../utils/exec.js'
+import { exec, execFile, execFileAsync } from '../utils/exec.js'
 import { safeCheckout, safeMerge } from '../utils/git-errors.js'
 import { getCurrentBranch } from '../utils/git.js'
 import { log } from '../utils/logging.js'
@@ -72,7 +72,7 @@ export async function handlePush(
         pushProgress.start([`Pushing to origin/${branch}`])
 
         try {
-          await execAsync(`git push -u origin "${branch}"`, true)
+          await execFileAsync('git', ['push', '-u', '--', 'origin', branch], true)
           pushProgress.succeed(`Pushed ${branch} to remote`)
         } catch (error) {
           pushProgress.fail('Push failed')
@@ -89,7 +89,7 @@ export async function handlePush(
         pushProgress.start([`Pushing to origin/${branch}`])
 
         try {
-          await execAsync(`git push -u origin "${branch}"`, true)
+          await execFileAsync('git', ['push', '-u', '--', 'origin', branch], true)
           pushProgress.succeed(`Pushed ${branch} to remote`)
         } catch (error) {
           pushProgress.fail('Push failed')
@@ -237,10 +237,14 @@ export async function handleMerge(
       } else {
         // Squash commits on feature branch first
         const commitCount = Number.parseInt(
-          exec(`git rev-list --count ${featureBranch} ^${targetBranch}`, true).trim()
+          execFile(
+            'git',
+            ['rev-list', '--count', '--end-of-options', featureBranch, `^${targetBranch}`],
+            true
+          ).trim()
         )
         if (commitCount > 1) {
-          exec(`git reset --soft HEAD~${commitCount - 1}`)
+          execFile('git', ['reset', '--soft', `HEAD~${commitCount - 1}`])
           exec('git commit --amend --no-edit --no-verify')
         }
         const mergeResult = await safeMerge(featureBranch, { noFf: true })
@@ -284,7 +288,7 @@ export async function handleMerge(
         pushProgress.start([`Pushing to origin/${currentBranch}`])
 
         try {
-          await execAsync(`git push -u origin "${currentBranch}"`, true)
+          await execFileAsync('git', ['push', '-u', '--', 'origin', currentBranch], true)
           pushProgress.succeed(`Pushed ${currentBranch} to remote`)
         } catch (error) {
           pushProgress.fail('Push failed')
@@ -326,13 +330,13 @@ export async function handleCleanup(featureBranch: string, state: GeetoState): P
             try {
               const deleteProgress = new ScrambleProgress()
               deleteProgress.start([`Deleting origin/${featureBranch}`])
-              await execAsync(`git push origin --delete ${featureBranch}`, true)
+              await execFileAsync('git', ['push', '--delete', '--', 'origin', featureBranch], true)
               deleteProgress.succeed(`Remote branch '${featureBranch}' deleted`)
               try {
-                exec(`git branch -d "${featureBranch}"`, true)
+                execFile('git', ['branch', '-d', '--', featureBranch], true)
                 log.success(`Local branch '${featureBranch}' deleted`)
               } catch {
-                exec(`git branch -D "${featureBranch}"`, true)
+                execFile('git', ['branch', '-D', '--', featureBranch], true)
                 log.success(`Local branch '${featureBranch}' force-deleted`)
               }
             } catch {
@@ -378,14 +382,18 @@ export async function handleCleanup(featureBranch: string, state: GeetoState): P
                   try {
                     const deleteProgress = new ScrambleProgress()
                     deleteProgress.start([`Deleting origin/${featureBranch}`])
-                    await execAsync(`git push origin --delete ${featureBranch}`, true)
+                    await execFileAsync(
+                      'git',
+                      ['push', '--delete', '--', 'origin', featureBranch],
+                      true
+                    )
                     deleteProgress.succeed(`Remote branch '${featureBranch}' deleted`)
                   } catch {
                     // Remote branch might not exist, ignore error
                   }
 
                   // Also delete local branch if it exists
-                  exec(`git branch -D ${featureBranch}`, true)
+                  execFile('git', ['branch', '-D', '--', featureBranch], true)
                   log.success(`Local branch '${featureBranch}' deleted`)
                 } catch (forceError) {
                   log.error(`Failed to delete branch: ${forceError}`)

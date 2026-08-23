@@ -5,7 +5,7 @@
 
 import { select } from '../cli/menu.js'
 import { colors } from '../utils/colors.js'
-import { execSilent } from '../utils/exec.js'
+import { execFileSilent, execSilent } from '../utils/exec.js'
 import { getCurrentBranch } from '../utils/git.js'
 import { log } from '../utils/logging.js'
 
@@ -55,7 +55,13 @@ const getAheadBehind = (
   compare: string
 ): { ahead: number; behind: number } | null => {
   try {
-    const output = execSilent(`git rev-list --left-right --count ${base}...${compare}`).trim()
+    const output = execFileSilent('git', [
+      'rev-list',
+      '--left-right',
+      '--count',
+      '--end-of-options',
+      `${base}...${compare}`,
+    ]).trim()
     const [ahead, behind] = output.split('\t').map(Number)
     return { ahead: ahead ?? 0, behind: behind ?? 0 }
   } catch {
@@ -71,7 +77,12 @@ const getFileStats = (
   compare: string
 ): Array<{ file: string; insertions: number; deletions: number; status: string }> => {
   try {
-    const output = execSilent(`git diff --numstat ${base}...${compare}`).trim()
+    const output = execFileSilent('git', [
+      'diff',
+      '--numstat',
+      '--end-of-options',
+      `${base}...${compare}`,
+    ]).trim()
     if (!output) return []
 
     return output
@@ -102,9 +113,13 @@ const getCommitsBetween = (
   limit = 10
 ): Array<{ hash: string; subject: string; date: string; author: string }> => {
   try {
-    const output = execSilent(
-      `git log --format="%h|%s|%cr|%an" ${base}..${compare} -${limit}`
-    ).trim()
+    const output = execFileSilent('git', [
+      'log',
+      '--format=%h|%s|%cr|%an',
+      `-${limit}`,
+      '--end-of-options',
+      `${base}..${compare}`,
+    ]).trim()
     if (!output) return []
 
     return output

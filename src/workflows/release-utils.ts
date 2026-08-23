@@ -4,7 +4,7 @@
 
 import { readFileSync, writeFileSync } from 'node:fs'
 
-import { execSilent } from '../utils/exec.js'
+import { execFileSilent, execSilent } from '../utils/exec.js'
 
 // ─── Types ───
 
@@ -113,9 +113,13 @@ export const getCommitsSinceTag = (tag?: string): CommitEntry[] => {
   try {
     const sep = '<<GTO>>'
     const range = tag ? `${tag}..HEAD` : 'HEAD'
-    const output = execSilent(
-      `git log ${range} --format="%H${sep}%h${sep}%s${sep}%an${sep}%ci" --no-merges`
-    ).trim()
+    const output = execFileSilent('git', [
+      'log',
+      `--format=%H${sep}%h${sep}%s${sep}%an${sep}%ci`,
+      '--no-merges',
+      '--end-of-options',
+      range,
+    ]).trim()
     if (!output) return []
     return output
       .split('\n')

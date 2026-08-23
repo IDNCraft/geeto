@@ -2,7 +2,7 @@ import type { GeminiModel } from '../api/gemini.js'
 import type { GroqModel } from '../api/groq.js'
 import type { OpenRouterModel } from '../api/openrouter.js'
 
-import { execGit } from './exec.js'
+import { execFile, execGit } from './exec.js'
 import { getChangedFiles, getChangedFilesWithStatus } from './git.js'
 import { ScrambleProgress } from './scramble.js'
 
@@ -545,7 +545,7 @@ export const handleBranchNaming = async (
 
     const spinner = log.spinner()
     spinner.start(`Creating branch: ${result.workingBranch}...`)
-    exec(`git checkout -b "${result.workingBranch}"`, true)
+    execFile('git', ['checkout', '-b', result.workingBranch], true)
     spinner.succeed(`Branch created: ${result.workingBranch}`)
   }
 

@@ -6,7 +6,7 @@
 import { askQuestion, confirm } from '../cli/input.js'
 import { multiSelect, select } from '../cli/menu.js'
 import { colors } from '../utils/colors.js'
-import { exec, execAsync, execSilent } from '../utils/exec.js'
+import { execFile, execFileAsync, execFileSilent, execSilent } from '../utils/exec.js'
 import { log } from '../utils/logging.js'
 
 // ─── Types ──────────────────────────────────────────────────────
@@ -44,10 +44,21 @@ const getSubmodules = (): SubmoduleInfo[] => {
         let url = ''
         let branch = ''
         try {
-          url = execSilent(`git config --file .gitmodules --get submodule.${subPath}.url`).trim()
+          url = execFileSilent('git', [
+            'config',
+            '--file',
+            '.gitmodules',
+            '--get',
+            `submodule.${subPath}.url`,
+          ]).trim()
           branch =
-            execSilent(`git config --file .gitmodules --get submodule.${subPath}.branch`).trim() ||
-            ''
+            execFileSilent('git', [
+              'config',
+              '--file',
+              '.gitmodules',
+              '--get',
+              `submodule.${subPath}.branch`,
+            ]).trim() || ''
         } catch {
           // .gitmodules may not have branch key
         }
@@ -130,14 +141,14 @@ const handleAdd = async (): Promise<void> => {
 
   const branch = askQuestion('Track branch (optional, press Enter to skip): ').trim()
 
-  let cmd = `git submodule add`
-  if (branch) cmd += ` -b ${branch}`
-  cmd += ` "${url}" "${subPath}"`
+  const args = ['submodule', 'add']
+  if (branch) args.push('-b', branch)
+  args.push('--', url, subPath)
 
   const spinner = log.spinner()
   spinner.start('Adding submodule...')
   try {
-    await execAsync(cmd, true)
+    await execFileAsync('git', args, true)
     spinner.succeed(`Submodule added at ${colors.green}${subPath}${colors.reset}`)
   } catch {
     spinner.fail('Failed to add submodule')
@@ -166,9 +177,9 @@ const handleInit = async (submodules: SubmoduleInfo[]): Promise<void> => {
   spinner.start('Initializing submodules...')
   try {
     for (const p of selected) {
-      exec(`git submodule init "${p}"`, true)
+      execFile('git', ['submodule', 'init', '--', p], true)
     }
-    await execAsync(`git submodule update ${selected.map((p) => `"${p}"`).join(' ')}`, true)
+    await execFileAsync('git', ['submodule', 'update', '--', ...selected], true)
     spinner.succeed(`${selected.length} submodule(s) initialized`)
   } catch {
     spinner.fail('Failed to initialize submodules')
@@ -211,16 +222,14 @@ const handleUpdate = async (submodules: SubmoduleInfo[]): Promise<void> => {
     if (targets.length === 0) return
   }
 
-  let cmd = 'git submodule update --recursive'
-  if (mode === 'remote') cmd += ' --remote'
-  if (targets.length > 0) {
-    cmd += ' ' + targets.map((p) => `"${p}"`).join(' ')
-  }
+  const args = ['submodule', 'update', '--recursive']
+  if (mode === 'remote') args.push('--remote')
+  if (targets.length > 0) args.push('--', ...targets)
 
   const spinner = log.spinner()
   spinner.start('Updating submodules...')
   try {
-    await execAsync(cmd, true)
+    await execFileAsync('git', args, true)
     spinner.succeed('Submodules updated!')
   } catch {
     spinner.fail('Failed to update submodules')
@@ -252,11 +261,11 @@ const handleRemove = async (submodules: SubmoduleInfo[]): Promise<void> => {
   spinner.start('Removing submodules...')
   try {
     for (const p of selected) {
-      exec(`git submodule deinit -f "${p}"`, true)
-      exec(`git rm -f "${p}"`, true)
+      execFile('git', ['submodule', 'deinit', '-f', '--', p], true)
+      execFile('git', ['rm', '-f', '--', p], true)
       // Clean .git/modules cache
       try {
-        exec(`rm -rf ".git/modules/${p}"`, true)
+        execFile('rm', ['-rf', `.git/modules/${p}`], true)
       } catch {
         // May not exist, ignore
       }
@@ -295,15 +304,13 @@ const handleSync = async (submodules: SubmoduleInfo[]): Promise<void> => {
     if (targets.length === 0) return
   }
 
-  let cmd = 'git submodule sync --recursive'
-  if (targets.length > 0) {
-    cmd += ' ' + targets.map((p) => `"${p}"`).join(' ')
-  }
+  const args = ['submodule', 'sync', '--recursive']
+  if (targets.length > 0) args.push('--', ...targets)
 
   const spinner = log.spinner()
   spinner.start('Syncing submodule URLs...')
   try {
-    await execAsync(cmd, true)
+    await execFileAsync('git', args, true)
     spinner.succeed('Submodule URLs synced!')
     log.info('Remote URLs updated from .gitmodules to .git/config')
   } catch {

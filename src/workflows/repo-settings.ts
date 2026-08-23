@@ -12,7 +12,7 @@ import { select } from '../cli/menu.js'
 import { getConfiguredAIProvider } from '../utils/ai-workflow.js'
 import { colors } from '../utils/colors.js'
 import { BOX_W } from '../utils/display.js'
-import { execAsync, execSilent } from '../utils/exec.js'
+import { execFileAsync, execFileSilent } from '../utils/exec.js'
 import {
   chooseModelForProvider,
   generateTextWithProvider,
@@ -79,7 +79,12 @@ const getCurrentRepoInfo = (
 } | null => {
   try {
     // NOTE: glab may use different --json field names — adjust if GitLab output differs
-    const raw = execSilent(`${cli} repo view --json description,homepageUrl,repositoryTopics`)
+    const raw = execFileSilent(cli, [
+      'repo',
+      'view',
+      '--json',
+      'description,homepageUrl,repositoryTopics',
+    ])
     const data = JSON.parse(raw) as {
       description: string
       homepageUrl: string
@@ -111,7 +116,7 @@ export const handleRepoSettings = async (): Promise<void> => {
 
   // Check platform CLI
   try {
-    execSilent(`${cli} --version`)
+    execFileSilent(cli, ['--version'])
   } catch {
     log.error(`${cliLabel} is not installed.`)
     log.info(
@@ -124,7 +129,7 @@ export const handleRepoSettings = async (): Promise<void> => {
 
   // Check auth
   try {
-    execSilent(`${cli} auth status`)
+    execFileSilent(cli, ['auth', 'status'])
   } catch {
     log.error(`Not authenticated with ${cliLabel}.`)
     log.info(`Run: ${cli} auth login`)
@@ -496,29 +501,28 @@ export const handleRepoSettings = async (): Promise<void> => {
   try {
     // Apply description + homepage
     if (changes.description || changes.homepage) {
-      let cmd = `${cli} repo edit`
+      const args = ['repo', 'edit']
       if (changes.description) {
-        const escaped = changes.description.replaceAll("'", String.raw`'\''`)
-        cmd += ` --description '${escaped}'`
+        args.push('--description', changes.description)
       }
       if (changes.homepage) {
-        cmd += ` --homepage '${changes.homepage}'`
+        args.push('--homepage', changes.homepage)
       }
-      await execAsync(cmd, true)
+      await execFileAsync(cli, args, true)
     }
 
     // Apply topics (add/remove individually)
     if (changes.topics) {
       for (const topic of repoInfo.topics) {
         try {
-          await execAsync(`${cli} repo edit --remove-topic "${topic}"`, true)
+          await execFileAsync(cli, ['repo', 'edit', '--remove-topic', topic], true)
         } catch {
           /* ignore */
         }
       }
       for (const topic of changes.topics) {
         try {
-          await execAsync(`${cli} repo edit --add-topic "${topic}"`, true)
+          await execFileAsync(cli, ['repo', 'edit', '--add-topic', topic], true)
         } catch {
           /* ignore */
         }

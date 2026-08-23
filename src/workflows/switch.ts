@@ -5,7 +5,7 @@
 
 import { select } from '../cli/menu.js'
 import { colors } from '../utils/colors.js'
-import { exec, execSilent } from '../utils/exec.js'
+import { execFile, execSilent } from '../utils/exec.js'
 import { getCurrentBranch } from '../utils/git.js'
 import { log } from '../utils/logging.js'
 
@@ -128,12 +128,12 @@ export const handleBranchSwitch = async (): Promise<void> => {
     if (branch.isLocal) {
       // Local branch — just switch
       spinner.start(`Switching to ${colors.cyan}${selected}${colors.reset}`)
-      exec(`git switch "${selected}"`, true)
+      execFile('git', ['switch', '--', selected], true)
       spinner.succeed(`Switched to ${colors.cyan}${selected}${colors.reset}`)
     } else {
       // Remote-only — checkout and track
       spinner.start(`Checking out ${colors.cyan}${selected}${colors.reset} from remote`)
-      exec(`git switch -c "${selected}" "origin/${selected}"`, true)
+      execFile('git', ['switch', '-c', selected, '--', `origin/${selected}`], true)
       spinner.succeed(`Checked out ${colors.cyan}${selected}${colors.reset} (tracking remote)`)
     }
   } catch {
@@ -141,8 +141,9 @@ export const handleBranchSwitch = async (): Promise<void> => {
 
     // Try fallback with git checkout
     try {
+      if (selected.startsWith('-')) throw new Error('Branch names starting with - are unsupported')
       spinner.start(`Retrying with git checkout...`)
-      exec(`git checkout "${selected}"`, true)
+      execFile('git', ['checkout', selected], true)
       spinner.succeed(`Switched to ${colors.cyan}${selected}${colors.reset}`)
     } catch (retryError) {
       spinner.fail(`Failed to switch: ${retryError}`)

@@ -13,7 +13,7 @@ import { select } from '../cli/menu.js'
 import { getConfiguredAIProvider } from '../utils/ai-workflow.js'
 import { colors } from '../utils/colors.js'
 import { BOX_W } from '../utils/display.js'
-import { execAsync, execSilent } from '../utils/exec.js'
+import { execFileAsync, execFileSilent } from '../utils/exec.js'
 import {
   chooseModelForProvider,
   generateReleaseNotesWithProvider,
@@ -29,8 +29,9 @@ import { loadState } from '../utils/state.js'
 
 export const getExistingGithubReleases = async (cli = 'gh'): Promise<string[]> => {
   try {
-    const result = await execAsync(
-      `${cli} release list --limit 100 --json tagName --jq ".[].tagName"`,
+    const result = await execFileAsync(
+      cli,
+      ['release', 'list', '--limit', '100', '--json', 'tagName', '--jq', '.[].tagName'],
       true
     )
     const output = result.stdout.trim()
@@ -64,7 +65,7 @@ export const handleSyncReleases = async (): Promise<void> => {
 
   // Check if platform CLI is available
   try {
-    execSilent(`${cli} --version`)
+    execFileSilent(cli, ['--version'])
   } catch {
     log.error(
       `${platformName} CLI (${cli}) is not installed.${cli === 'gh' ? ' Install it: https://cli.github.com' : ' Install it: https://gitlab.com/gitlab-org/cli'}`
@@ -311,7 +312,7 @@ export const handleSyncReleases = async (): Promise<void> => {
     // Ensure tag exists on remote before creating GitHub Release
     releaseSpinner.start([`Pushing tag ${tag} to remote`])
     try {
-      await execAsync(`git push origin ${tag} --no-verify`, true)
+      await execFileAsync('git', ['push', '--no-verify', '--', 'origin', tag], true)
       releaseSpinner.succeed(`Tag ${tag} pushed to remote`)
     } catch {
       // Tag might already exist on remote — that's fine, continue
@@ -326,8 +327,9 @@ export const handleSyncReleases = async (): Promise<void> => {
     writeFileSync(tempFile, releaseBody, 'utf8')
 
     try {
-      await execAsync(
-        `${cli} release create ${tag} --title "${tag}" --notes-file "${tempFile}"`,
+      await execFileAsync(
+        cli,
+        ['release', 'create', '--title', tag, '--notes-file', tempFile, '--', tag],
         true
       )
       createSpinner.succeed(`Release ${tag} created`)
@@ -365,7 +367,7 @@ export const handleDeleteReleases = async (): Promise<void> => {
 
   // Check if platform CLI is available
   try {
-    execSilent(`${cli} --version`)
+    execFileSilent(cli, ['--version'])
   } catch {
     log.error(
       `${platformName} CLI (${cli}) is not installed.${cli === 'gh' ? ' Install it: https://cli.github.com' : ' Install it: https://gitlab.com/gitlab-org/cli'}`
@@ -441,9 +443,13 @@ export const handleDeleteReleases = async (): Promise<void> => {
     if (isLocalOnly) {
       releaseSpinner.start([`Deleting local tag ${release}`])
       try {
-        await execAsync(`git tag -d ${release}`, true)
+        await execFileAsync('git', ['tag', '-d', '--', release], true)
         try {
-          await execAsync(`git push origin --delete ${release} --no-verify`, true)
+          await execFileAsync(
+            'git',
+            ['push', '--delete', '--no-verify', '--', 'origin', release],
+            true
+          )
         } catch {
           /* Remote tag may not exist */
         }
@@ -457,11 +463,15 @@ export const handleDeleteReleases = async (): Promise<void> => {
 
     releaseSpinner.start([`Deleting release ${release}`])
     try {
-      await execAsync(`${cli} release delete ${release} --yes`, true)
+      await execFileAsync(cli, ['release', 'delete', '--yes', '--', release], true)
       if (alsoDeleteTag) {
         try {
-          await execAsync(`git tag -d ${release}`, true)
-          await execAsync(`git push origin --delete ${release} --no-verify`, true)
+          await execFileAsync('git', ['tag', '-d', '--', release], true)
+          await execFileAsync(
+            'git',
+            ['push', '--delete', '--no-verify', '--', 'origin', release],
+            true
+          )
         } catch {
           /* Tag deletion is best-effort */
         }

@@ -7,7 +7,7 @@ import { askQuestion, confirm } from '../cli/input.js'
 import { select } from '../cli/menu.js'
 import { colors } from '../utils/colors.js'
 import { BOX_W } from '../utils/display.js'
-import { exec, execSilent } from '../utils/exec.js'
+import { exec, execFile, execFileSilent, execSilent } from '../utils/exec.js'
 import { getCurrentBranch } from '../utils/git.js'
 import { log } from '../utils/logging.js'
 
@@ -53,7 +53,7 @@ const getStashList = (): StashEntry[] => {
  */
 const getStashDiff = (ref: string): string => {
   try {
-    return execSilent(`git stash show ${ref} --stat`).trim()
+    return execFileSilent('git', ['stash', 'show', ref, '--stat']).trim()
   } catch {
     return ''
   }
@@ -64,7 +64,7 @@ const getStashDiff = (ref: string): string => {
  */
 const getStashFullDiff = (ref: string): string => {
   try {
-    return execSilent(`git stash show ${ref} -p --color=always`).trim()
+    return execFileSilent('git', ['stash', 'show', ref, '-p', '--color=always']).trim()
   } catch {
     return ''
   }
@@ -142,12 +142,12 @@ const handleStashCreate = async (): Promise<void> => {
   spinner.start('Stashing changes...')
 
   try {
-    let cmd = 'git stash push'
-    if (stashType === 'untracked') cmd += ' --include-untracked'
-    if (stashType === 'all') cmd += ' --all'
-    if (message) cmd += ` -m "${message}"`
+    const args = ['stash', 'push']
+    if (stashType === 'untracked') args.push('--include-untracked')
+    if (stashType === 'all') args.push('--all')
+    if (message) args.push('-m', message)
 
-    exec(cmd, true)
+    execFile('git', args, true)
     spinner.succeed('Changes stashed!')
   } catch {
     spinner.fail('Failed to stash')
@@ -201,7 +201,7 @@ const handleStashAction = async (stash: StashEntry): Promise<'back' | 'done'> =>
       const spinner = log.spinner()
       spinner.start('Applying stash...')
       try {
-        exec(`git stash apply ${stash.ref}`, true)
+        execFile('git', ['stash', 'apply', stash.ref], true)
         spinner.succeed('Stash applied! (stash kept)')
       } catch {
         spinner.fail('Failed to apply — possible conflicts')
@@ -213,7 +213,7 @@ const handleStashAction = async (stash: StashEntry): Promise<'back' | 'done'> =>
       const spinner = log.spinner()
       spinner.start('Popping stash...')
       try {
-        exec(`git stash pop ${stash.ref}`, true)
+        execFile('git', ['stash', 'pop', stash.ref], true)
         spinner.succeed('Stash popped! (stash removed)')
       } catch {
         spinner.fail('Failed to pop — possible conflicts')
@@ -236,7 +236,7 @@ const handleStashAction = async (stash: StashEntry): Promise<'back' | 'done'> =>
       const sure = confirm(`Delete ${stash.ref}? This cannot be undone.`)
       if (sure) {
         try {
-          exec(`git stash drop ${stash.ref}`, true)
+          execFile('git', ['stash', 'drop', stash.ref], true)
           log.success(`${stash.ref} dropped.`)
         } catch {
           log.error('Failed to drop stash.')

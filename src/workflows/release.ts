@@ -32,7 +32,7 @@ import { select } from '../cli/menu.js'
 import { getConfiguredAIProvider } from '../utils/ai-workflow.js'
 import { colors } from '../utils/colors.js'
 import { BOX_W } from '../utils/display.js'
-import { exec, execAsync, execSilent } from '../utils/exec.js'
+import { exec, execFile, execFileAsync, execFileSilent } from '../utils/exec.js'
 import {
   chooseModelForProvider,
   generateReleaseNotesWithProvider,
@@ -732,7 +732,7 @@ export const handleRelease = async (): Promise<void> => {
   spinner.start('Creating release commit...')
   try {
     exec('git add package.json src/version.ts RELEASE.MD CHANGELOG.md', true)
-    exec(`git commit --no-verify -m "chore(release): v${newVersion}"`, true)
+    execFile('git', ['commit', '--no-verify', '-m', `chore(release): v${newVersion}`], true)
     spinner.succeed('Release commit created')
   } catch {
     spinner.fail('Failed to create release commit')
@@ -741,7 +741,7 @@ export const handleRelease = async (): Promise<void> => {
 
   spinner.start(`Creating tag v${newVersion}...`)
   try {
-    exec(`git tag -a v${newVersion} -m "Release v${newVersion}"`, true)
+    execFile('git', ['tag', '-a', '-m', `Release v${newVersion}`, '--', `v${newVersion}`], true)
     spinner.succeed(`Tag v${newVersion} created`)
   } catch {
     spinner.fail('Failed to create tag')
@@ -762,9 +762,9 @@ export const handleRelease = async (): Promise<void> => {
     pushProgress.start(['Pushing release to remote'])
 
     try {
-      await execAsync(`git push`, true)
+      await execFileAsync('git', ['push'], true)
       if (pushChoice === 'both') {
-        await execAsync(`git push origin v${newVersion} --no-verify`, true)
+        await execFileAsync('git', ['push', '--no-verify', '--', 'origin', `v${newVersion}`], true)
       }
       pushProgress.stop()
       console.log('')
@@ -779,7 +779,7 @@ export const handleRelease = async (): Promise<void> => {
   let releaseCreated = false
   if (pushChoice === 'both') {
     try {
-      execSilent(`${cli} --version`)
+      execFileSilent(cli, ['--version'])
       // Platform CLI is available — create a Release
 
       // Build release body from AI notes or template
@@ -799,11 +799,17 @@ export const handleRelease = async (): Promise<void> => {
       releaseSpinner.start([`Creating ${platformName} release`])
 
       try {
-        const preFlag = isPreVersion ? ' --prerelease' : ''
-        await execAsync(
-          `${cli} release create v${newVersion} --title "v${newVersion}" --notes-file "${tempFile}"${preFlag}`,
-          true
-        )
+        const releaseArgs = [
+          'release',
+          'create',
+          '--title',
+          `v${newVersion}`,
+          '--notes-file',
+          tempFile,
+        ]
+        if (isPreVersion) releaseArgs.push('--prerelease')
+        releaseArgs.push('--', `v${newVersion}`)
+        await execFileAsync(cli, releaseArgs, true)
         releaseSpinner.succeed(`${platformName} Release created`)
         releaseCreated = true
       } catch (error) {

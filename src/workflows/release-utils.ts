@@ -32,14 +32,48 @@ export interface CategorizedCommits {
 
 // ─── Helpers ───
 
+const isAsciiDigit = (character: string): boolean => character >= '0' && character <= '9'
+
+const isAsciiLetter = (character: string): boolean =>
+  (character >= 'a' && character <= 'z') || (character >= 'A' && character <= 'Z')
+
+const hasOnlyDigits = (value: string): boolean =>
+  value.length > 0 && [...value].every((character) => isAsciiDigit(character))
+
+const isNumericIdentifier = (value: string): boolean =>
+  hasOnlyDigits(value) && (value === '0' || value[0] !== '0')
+
+const isValidPrereleaseIdentifier = (value: string): boolean => {
+  const hasValidCharacters =
+    value.length > 0 &&
+    [...value].every(
+      (character) => isAsciiDigit(character) || isAsciiLetter(character) || character === '-'
+    )
+
+  return hasValidCharacters && (!hasOnlyDigits(value) || isNumericIdentifier(value))
+}
+
 export const parseSemver = (version: string): SemVer | null => {
-  const match = version.match(/^(\d+)\.(\d+)\.(\d+)(?:-([a-zA-Z0-9.]+))?/)
-  if (!match) return null
+  const prereleaseSeparator = version.indexOf('-')
+  const core = prereleaseSeparator === -1 ? version : version.slice(0, prereleaseSeparator)
+  const prerelease = prereleaseSeparator === -1 ? undefined : version.slice(prereleaseSeparator + 1)
+  const coreParts = core.split('.')
+  const hasInvalidPrerelease =
+    prerelease?.split('.').some((identifier) => !isValidPrereleaseIdentifier(identifier)) ?? false
+
+  if (
+    coreParts.length !== 3 ||
+    coreParts.some((part) => !isNumericIdentifier(part)) ||
+    hasInvalidPrerelease
+  ) {
+    return null
+  }
+
   return {
-    major: Number.parseInt(match[1] ?? '0', 10),
-    minor: Number.parseInt(match[2] ?? '0', 10),
-    patch: Number.parseInt(match[3] ?? '0', 10),
-    prerelease: match[4] ?? undefined,
+    major: Number.parseInt(coreParts[0] ?? '0', 10),
+    minor: Number.parseInt(coreParts[1] ?? '0', 10),
+    patch: Number.parseInt(coreParts[2] ?? '0', 10),
+    prerelease,
   }
 }
 

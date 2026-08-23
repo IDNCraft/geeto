@@ -18,6 +18,18 @@ bun install
 bun run build
 ```
 
+## Optional Graphify
+
+- Graphify is optional; it is not required for setup, development, checks, or pull requests.
+- If `graphify-out/graph.json` and `graphify-out/manifest.json` already exist after cloning, reuse them and skip extraction.
+- If either file is missing and you want a repository graph, run this from the project root:
+
+```bash
+graphify . --update --code-only
+```
+
+- Shared graph output may be committed; do not commit local Graphify metadata.
+
 ## Development Workflow
 
 1. Fork the repository and clone your fork

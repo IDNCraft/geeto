@@ -1,0 +1,36 @@
+# Bun/TypeScript package dependencies and generated output
+
+node_modules/
+lib/
+dist/
+build/
+out/
+coverage/
+.cache/
+.eslintcache
+*.tsbuildinfo
+*.js.map
+
+# Compiled local CLI artifacts
+
+geeto*
+*.tgz
+
+# Local workflow state
+
+.geeto/
+.omo/
+.codegraph
+.temp/
+tmp/
+
+# Graphify generated state
+
+graphify-out/
+
+# Local-only secrets and machine files
+
+.env
+.env.*
+!.env.example
+.DS_Store

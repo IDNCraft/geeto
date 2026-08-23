@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.14.5](https://github.com/IDNCraft/geeto/compare/v0.14.4...v0.14.5) (2026-08-14)
+
+### Bug Fixes
+
+* fix(ai): harden commit generation and runtime startup ([d57e77d](https://github.com/IDNCraft/geeto/commit/d57e77d))
+
 ## [0.14.4](https://github.com/IDNCraft/geeto/compare/v0.14.3...v0.14.4) (2026-08-14)
 
 ### Bug Fixes

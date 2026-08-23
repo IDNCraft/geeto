@@ -1,5 +1,15 @@
 # Releases
 
+## v0.14.5 — August 14, 2026
+
+### What's New?
+
+#### Bug Fixes
+
+- Improved AI commit generation reliability and application startup stability.
+
+---
+
 ## v0.14.4 — August 14, 2026
 
 ### What's New?

@@ -30,9 +30,10 @@ Fixes: #ISSUE_NUMBER (if applicable)
 
 Please check the items that apply before requesting review:
 
-- [ ] The branch name follows the project's convention (e.g. `dev/...`)
+- [ ] The branch name follows the project's convention (e.g. `dev#my-feature`)
 - [ ] The PR title follows Conventional Commits
 - [ ] Linting passes locally: `bun run lint`
+- [ ] Markdown linting passes locally: `bun run lint:md`
 - [ ] Type checking passes: `bun run typecheck`
 - [ ] Build succeeds: `bun run build`
 - [ ] Tests added/updated for new behavior (if applicable)
@@ -46,12 +47,10 @@ Please check the items that apply before requesting review:
 Provide clear instructions for how reviewers can reproduce and verify the changes locally (commands, env vars, fixtures):
 
 ```bash
-# example
 bun install
-bun run build
-bun run typecheck
-# run tests
 bun test
+bun run check:fast
+bun run check:full
 ```
 
 ## Security & Private Data

@@ -52,6 +52,7 @@
     "build": "tsc && chmod +x ./lib/index.js",
     "dev": "bun src/index.ts",
     "start": "./lib/index.js",
+    "test": "bun test",
     "clean": "rm -rf lib",
     "prebuild": "bun scripts/generate-prompts.ts && bun run clean",
     "typecheck": "tsc --noEmit",

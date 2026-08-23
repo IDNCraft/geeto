@@ -36,8 +36,9 @@ graphify . --update --code-only
 2. Create a branch following the naming convention (see below)
 3. Make changes with clear, focused commits
 4. Test locally: `bun run dev`
-5. Run checks: `bun run check:fast && bun run check:full`
-6. Submit a PR to the `main` branch
+5. Run tests: `bun test`
+6. Run checks: `bun run check:fast && bun run check:full`
+7. Submit a PR to the `main` branch
 
 ## Branch Naming
 
@@ -94,11 +95,15 @@ Follow [Conventional Commits](https://www.conventionalcommits.org/):
 ### Linting
 
 ```bash
-bun run check:fast     # Quick lint (ESLint + Prettier)
-bun run check:full     # Full typecheck + lint + spell check
-bun run typecheck      # TypeScript type checking only
-bun run lint           # ESLint only
-bun run format         # Format with Prettier
+bun test               # Documentation regression and unit tests
+bun run format:check   # Prettier check for source files
+bun run lint           # ESLint
+bun run lint:md        # Markdown lint
+bun run lint:yaml      # YAML lint
+bun run typecheck      # TypeScript type checking
+bun run build          # Production build
+bun run check:fast     # Formatting, ESLint, Markdown, and YAML lint
+bun run check:full     # Typecheck and production build
 ```
 
 ## Pull Request Guidelines
@@ -108,11 +113,23 @@ bun run format         # Format with Prettier
 3. **Pass all checks** — CI must be green before merging
 4. **Respond to feedback** promptly
 
+## Supported AI Providers
+
+These providers and setup commands mirror the [README provider reference](README.md#ai-providers):
+
+| Provider         | Setup command              |
+| ---------------- | -------------------------- |
+| **Gemini**       | `geeto --setup-gemini`     |
+| **OpenRouter**   | `geeto --setup-openrouter` |
+| **Groq**         | `geeto --setup-groq`       |
+| **OpenAI Codex** | `geeto --setup-codex`      |
+| **OpenCode Zen** | `geeto --setup-opencode`   |
+
 ## Project Structure
 
 ```text
 src/
-├── api/          # AI provider SDKs (Gemini, OpenRouter) & Trello API
+├── api/          # AI provider adapters and GitHub, GitLab, and Trello APIs
 ├── cli/          # Interactive CLI components (select menu, input, prompts)
 ├── core/         # Setup flows, constants, menu definitions
 ├── types/        # TypeScript interfaces and type definitions
@@ -120,13 +137,13 @@ src/
 └── workflows/    # Main workflow logic (commit, branch, release, merge, etc.)
 ```
 
-| Directory    | Key Files                                                              |
-| ------------ | ---------------------------------------------------------------------- |
-| `api/`       | `gemini-sdk.ts`, `openrouter-sdk.ts`, `trello.ts`                      |
-| `cli/`       | `input.ts` (prompts), `menu.ts` (select menus)                         |
-| `core/`      | `setup.ts` (provider setup), `constants.ts`                            |
-| `utils/`     | `git.ts`, `git-ai.ts`, `config.ts`, `state.ts`, `exec.ts`              |
-| `workflows/` | `commit.ts`, `branch.ts`, `release.ts`, `merge.ts`, `repo-settings.ts` |
+| Directory    | Key Files                                                                                       |
+| ------------ | ----------------------------------------------------------------------------------------------- |
+| `api/`       | `gemini-sdk.ts`, `openrouter-sdk.ts`, `groq-sdk.ts`, `codex-sdk.ts`, `opencode.ts`, `trello.ts` |
+| `cli/`       | `input.ts` (prompts), `menu.ts` (select menus)                                                  |
+| `core/`      | `setup.ts` (provider setup), `constants.ts`                                                     |
+| `utils/`     | `git.ts`, `git-ai.ts`, `config.ts`, `state.ts`, `exec.ts`                                       |
+| `workflows/` | `commit.ts`, `branch.ts`, `release.ts`, `release-merge.ts`, `repo-settings.ts`                  |
 
 ## Adding a New AI Provider
 

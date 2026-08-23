@@ -386,10 +386,16 @@ git clone https://github.com/IDNCraft/geeto.git
 cd geeto
 bun install
 
-bun run build          # Build
 bun run dev            # Development mode (run from source)
-bun run check:fast     # Formatting, TypeScript, Markdown, and YAML lint
-bun run check:full     # Typecheck + production build
+bun test               # Documentation regression and unit tests
+bun run format:check   # Prettier check for source files
+bun run lint           # ESLint
+bun run lint:md        # Markdown lint
+bun run lint:yaml      # YAML lint
+bun run typecheck      # TypeScript type checking
+bun run build          # Production build
+bun run check:fast     # Formatting, ESLint, Markdown, and YAML lint
+bun run check:full     # Typecheck and production build
 ```
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.

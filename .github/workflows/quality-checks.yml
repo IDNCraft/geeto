@@ -25,6 +25,9 @@ jobs:
     - name: Install dependencies
       run: bun install
 
+    - name: Run Bun tests
+      run: bun run test
+
     - name: Setup Husky
       run: bun run prepare
 

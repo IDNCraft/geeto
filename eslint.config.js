@@ -136,6 +136,7 @@ export default [
       '*.seed',
       '*.pid.lock',
       'coverage/',
+      '**/*.test.ts',
       '.nyc_output',
       'jspm_packages/',
       '.npm',

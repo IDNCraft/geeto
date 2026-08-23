@@ -9,8 +9,10 @@ import {
 } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
+import type { GeetoState } from '../src/types/index.js'
 import { afterEach, describe, expect, mock, spyOn, test } from 'bun:test'
 
+import { STEP } from '../src/core/constants.js'
 import {
   getDryRunCommands,
   isMutatingCommand,
@@ -24,6 +26,7 @@ let confirmCalls = 0
 
 mock.module('../src/cli/input.js', () => ({
   askQuestion: (): string => '',
+  closeInput: (): void => {},
   confirm: (): boolean => {
     confirmCalls++
     return false
@@ -32,6 +35,7 @@ mock.module('../src/cli/input.js', () => ({
 }))
 
 const { attemptCommit } = await import('../src/workflows/commit.js')
+const { markCommitCompleted } = await import('../src/workflows/main.js')
 
 const originalCwd = process.cwd()
 const originalEnv = {
@@ -97,6 +101,25 @@ describe('dry-run command classification', () => {
 })
 
 describe('dry-run side-effect isolation', () => {
+  test('does not persist a committed checkpoint for a simulated commit', () => {
+    tempRoot = mkdtempSync(path.join(tmpdir(), 'geeto-dry-run-state-'))
+    process.chdir(tempRoot)
+
+    const state: GeetoState = {
+      step: STEP.BRANCH_CREATED,
+      workingBranch: 'feature/dry-run',
+      targetBranch: 'main',
+      currentBranch: 'feature/dry-run',
+      timestamp: new Date().toISOString(),
+    }
+
+    setDryRun(true)
+    markCommitCompleted(state)
+
+    expect(state.step).toBe(STEP.BRANCH_CREATED)
+    expect(existsSync(path.join(tempRoot, '.geeto', 'geeto-state.json'))).toBe(false)
+  })
+
   test('preserves repository, filesystem, and API state while recording safe intent', async () => {
     const gitPath = Bun.which('git')
     if (!gitPath) throw new Error('git is required for this test')

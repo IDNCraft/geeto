@@ -20,7 +20,7 @@ export default [
     files: ['**/*.ts', '**/*.tsx'],
     languageOptions: {
       parser: tsParser,
-      parserOptions: { ecmaVersion: 2022, sourceType: 'module', project: './tsconfig.json' },
+      parserOptions: { ecmaVersion: 2022, sourceType: 'module', project: './tsconfig.eslint.json' },
     },
     plugins: { '@typescript-eslint': tsPlugin },
     // Pull recommended rules from the plugin directly to avoid `extends` resolution issues

@@ -119,32 +119,90 @@ const getTopContributors = (
 /**
  * Get commit activity (last 12 months)
  */
-const getMonthlyActivity = (): Array<{ month: string; count: number }> => {
-  const months: Array<{ month: string; count: number }> = []
-  const now = new Date()
+const formatTimezoneOffset = (date: Date): string => {
+  const offsetMinutes = -date.getTimezoneOffset()
+  const sign = offsetMinutes >= 0 ? '+' : '-'
+  const absoluteMinutes = Math.abs(offsetMinutes)
+  const hours = String(Math.floor(absoluteMinutes / 60)).padStart(2, '0')
+  const minutes = String(absoluteMinutes % 60).padStart(2, '0')
+  return `${sign}${hours}${minutes}`
+}
+
+const formatGitBoundary = (date: Date, time: string, timezoneOffset: string): string =>
+  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}T${time}${timezoneOffset}`
+
+const getBoundaryTime = (date: Date, now: Date): number =>
+  Date.UTC(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate(),
+    now.getHours(),
+    now.getMinutes(),
+    now.getSeconds()
+  ) +
+  now.getTimezoneOffset() * 60 * 1000
+
+export const getMonthlyActivity = (...args: unknown[]): Array<{ month: string; count: number }> => {
+  const now = args[0] instanceof Date ? args[0] : new Date()
+  const runCommand = typeof args[1] === 'function' ? (args[1] as typeof execSilent) : execSilent
+  // Git date-only arguments inherit the current local clock and offset; snapshot both for parity.
+  const timezoneOffset = formatTimezoneOffset(now)
+  const time = [now.getHours(), now.getMinutes(), now.getSeconds()]
+    .map((part) => String(part).padStart(2, '0'))
+    .join(':')
+  const months: Array<{
+    month: string
+    count: number
+    after: string
+    before: string
+    afterTime: number
+    beforeTime: number
+  }> = []
 
   for (let i = 11; i >= 0; i--) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
-    const after = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`
+    const after = formatGitBoundary(d, time, timezoneOffset)
     const nextMonth = new Date(d.getFullYear(), d.getMonth() + 1, 1)
-    const before = `${nextMonth.getFullYear()}-${String(nextMonth.getMonth() + 1).padStart(2, '0')}-01`
-
-    let count = 0
-    try {
-      count =
-        Number.parseInt(
-          execSilent(`git rev-list --count --after="${after}" --before="${before}" HEAD`).trim(),
-          10
-        ) || 0
-    } catch {
-      // skip
-    }
+    const before = formatGitBoundary(nextMonth, time, timezoneOffset)
 
     const monthName = d.toLocaleString('en', { month: 'short' })
-    months.push({ month: monthName, count })
+    months.push({
+      month: monthName,
+      count: 0,
+      after,
+      before,
+      // Git treats explicit --after boundaries as inclusive and --before boundaries as exclusive.
+      afterTime: getBoundaryTime(d, now),
+      beforeTime: getBoundaryTime(nextMonth, now),
+    })
   }
 
-  return months
+  const firstMonth = months[0]
+  const lastMonth = months.at(-1)
+  if (!firstMonth || !lastMonth) return []
+
+  let commitTimestamps = ''
+  try {
+    commitTimestamps = runCommand(
+      `git rev-list --format=%ct --no-commit-header --after="${firstMonth.after}" --before="${lastMonth.before}" HEAD`
+    ).trim()
+  } catch {
+    // skip
+  }
+
+  for (const line of commitTimestamps.split('\n')) {
+    if (!line) continue
+    const timestamp = Number(line)
+    if (!Number.isFinite(timestamp)) continue
+
+    const commitTime = timestamp * 1000
+    const month = months.find(
+      ({ afterTime, beforeTime }) => commitTime >= afterTime && commitTime < beforeTime
+    )
+    if (month) month.count++
+  }
+
+  return months.map(({ month, count }) => ({ month, count }))
 }
 
 /**

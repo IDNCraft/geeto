@@ -23,6 +23,13 @@ import { getCurrentBranch, getStagedFiles } from '../utils/git.js'
 import { log } from '../utils/logging.js'
 import { loadState, preserveProviderState, saveState } from '../utils/state.js'
 
+export const markCommitCompleted = (state: GeetoState): void => {
+  if (isDryRun()) return
+
+  state.step = STEP.COMMITTED
+  saveState(state)
+}
+
 export const main = async (opts?: MainOpts): Promise<void> => {
   try {
     log.banner()
@@ -290,8 +297,7 @@ export const main = async (opts?: MainOpts): Promise<void> => {
           suppressStep: !!opts?.startAt,
           suppressConfirm: false,
         })
-        state.step = STEP.COMMITTED
-        saveState(state)
+        markCommitCompleted(state)
       }
     } else {
       // If commit was explicitly skipped earlier, don't print "already done" messages

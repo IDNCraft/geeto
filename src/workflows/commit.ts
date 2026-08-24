@@ -2,7 +2,6 @@
  * Commit workflow - handles commit-related operations
  */
 
-import { execSync } from 'node:child_process'
 import path from 'node:path'
 import type { GeminiModel } from '../api/gemini.js'
 import type { OpenRouterModel } from '../api/openrouter.js'
@@ -14,7 +13,7 @@ import { colors } from '../utils/colors.js'
 import { extractCommitTitle, getCommitTypes, normalizeAIOutput } from '../utils/commit-helpers.js'
 import { DEFAULT_GEMINI_MODEL } from '../utils/config.js'
 import { getStepProgress } from '../utils/display.js'
-import { isDryRun } from '../utils/dry-run.js'
+import { isDryRun, logDryRun } from '../utils/dry-run.js'
 import { execGit } from '../utils/exec.js'
 import {
   chooseModelForProvider,
@@ -138,7 +137,12 @@ Other suggested commits:\n- ${conv.join('\n- ')}`
 }
 
 /** Attempt to run git commit using a temporary file to avoid shell quoting issues. */
-async function attemptCommit(titleStr: string, bodyStr?: string | null): Promise<boolean> {
+export async function attemptCommit(titleStr: string, bodyStr?: string | null): Promise<boolean> {
+  if (isDryRun()) {
+    logDryRun('git commit -F <temporary-message-file>')
+    return true
+  }
+
   // Compose full commit message
   const msg = bodyStr ? `${titleStr}\n\n${bodyStr}\n` : `${titleStr}\n`
 
@@ -170,22 +174,6 @@ async function attemptCommit(titleStr: string, bodyStr?: string | null): Promise
       const display = titleStr.split('\n')[0] ?? titleStr
       console.log('')
       log.success(`Committed: ${colors.cyan}${colors.bright}${display}${colors.reset}`)
-
-      // In dry-run mode, offer to revert the commit immediately
-      if (isDryRun()) {
-        console.log('')
-        const revert = confirm('Revert this dry-run commit?', true)
-        if (revert) {
-          try {
-            // Bypass execGit to avoid dry-run guard interception
-            execSync('git reset --soft HEAD~1', { stdio: 'pipe' })
-            log.warn('Commit reverted — changes still staged.')
-          } catch {
-            log.error('Failed to revert.')
-          }
-          process.exit(0)
-        }
-      }
 
       return true
     }

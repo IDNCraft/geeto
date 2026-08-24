@@ -65,7 +65,6 @@ const READ_ONLY_PATTERNS = [
   /^git\s+branch\s+--/,
   /^git\s+branch\s+-[arvl]/,
   /^git\s+remote/,
-  /^git\s+fetch/,
   /^git\s+config/,
   /^git\s+reflog/,
   /^git\s+show\b/,
@@ -109,8 +108,16 @@ export const isMutatingCommand = (command: string): boolean => {
   if (/^git\s+/.test(trimmed)) {
     return !isReadOnlyCommand(trimmed)
   }
-  // GitHub CLI mutating commands
-  if (/^gh\s+(pr\s+create|issue\s+create|repo\s+edit|release\s+create)/.test(trimmed)) {
+  // GitHub/GitLab CLI mutating commands
+  if (
+    /^(?:gh|glab)\s+(?:pr\s+create|issue\s+create|repo\s+edit|release\s+(?:create|delete))\b/.test(
+      trimmed
+    )
+  ) {
+    return true
+  }
+  // Filesystem cleanup commands
+  if (/^(?:rm|rmdir)\b/.test(trimmed)) {
     return true
   }
   // open/xdg-open (browser) — skip in dry-run

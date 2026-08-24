@@ -15,6 +15,7 @@ import { showSettingsMenu } from './settings.js'
 import { closeInput, confirm } from '../cli/input.js'
 import { select } from '../cli/menu.js'
 import { STEP } from '../core/constants.js'
+import { JsonExitSignal } from '../utils/cli-json.js'
 import { colors } from '../utils/colors.js'
 import { displayCompletionSummary, displayCurrentProviderStatus } from '../utils/display.js'
 import { isDryRun } from '../utils/dry-run.js'
@@ -418,6 +419,7 @@ export const main = async (opts?: MainOpts): Promise<void> => {
     }
     process.exit(0)
   } catch (error) {
+    if (error instanceof JsonExitSignal) throw error
     if (error instanceof Error) {
       log.error(error.message)
     } else {

@@ -7,6 +7,8 @@ import fs from 'node:fs'
 import os from 'node:os'
 import readline from 'node:readline'
 
+import { isJsonOutputEnabled } from '../utils/cli-json.js'
+
 const rl = readline.createInterface({
   input: process.stdin,
   output: process.stdout,
@@ -190,6 +192,7 @@ export const confirm = (question: string, defaultYes: boolean = true): boolean =
       // Ctrl+C → exit
       if (b === 3) {
         process.stdout.write('\u001B[?25h\n')
+        if (isJsonOutputEnabled()) return false
         process.exit(0)
       }
 

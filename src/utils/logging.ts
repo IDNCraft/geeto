@@ -16,6 +16,7 @@ class Spinner {
     this.message = message
     this.currentFrame = 0
     this.startTime = Date.now()
+    activeSpinners.add(this)
     process.stdout.write('\u001B[?25l') // Hide cursor
     this.interval = setInterval(() => {
       const frame = SPINNER_FRAMES[this.currentFrame]
@@ -41,6 +42,7 @@ class Spinner {
       clearInterval(this.interval)
       this.interval = null
     }
+    activeSpinners.delete(this)
     process.stdout.write('\r\u001B[2K') // Clear spinner line
     process.stdout.write('\u001B[?25h') // Show cursor
     if (finalMessage) {
@@ -54,6 +56,15 @@ class Spinner {
 
   fail(message: string): void {
     this.stop(`${colors.red}✗${colors.reset} ${message}`)
+  }
+}
+
+const activeSpinners = new Set<Spinner>()
+
+/** Stop animations before a machine-readable command restores stdout. */
+export const stopActiveSpinners = (): void => {
+  for (const spinner of activeSpinners) {
+    spinner.stop()
   }
 }
 

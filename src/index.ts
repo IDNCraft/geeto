@@ -3,6 +3,16 @@
  * Geeto - Git flow automation CLI tool with AI-powered branch naming
  * Main entry point - delegates to modular workflows via command registry
  */
+import type { CliJsonOutput, CliJsonStatus } from './utils/cli-json.js'
+
+import {
+  classifyJsonExit,
+  classifyOutputCancellation,
+  createCliJsonOutput,
+  JsonExitSignal,
+  startJsonOutputCapture,
+} from './utils/cli-json.js'
+import { stopActiveSpinners } from './utils/logging.js'
 import { checkForUpdate, getVersionHint, promptUpdate } from './utils/update-checker.js'
 import { VERSION } from './version.js'
 
@@ -19,6 +29,10 @@ interface CommandEntry {
   handler: string
   /** Label shown in error messages */
   errorLabel: string
+  /** Whether the command only reads local or remote state. */
+  readOnly?: boolean
+  /** Whether the human workflow needs a terminal selection. */
+  interactive?: boolean
 }
 
 /**
@@ -61,6 +75,7 @@ const COMMAND_REGISTRY: CommandEntry[] = [
     module: './workflows/status.js',
     handler: 'handleStatus',
     errorLabel: 'Status',
+    readOnly: true,
   },
   {
     flag: '--revert',
@@ -103,6 +118,8 @@ const COMMAND_REGISTRY: CommandEntry[] = [
     module: './workflows/compare.js',
     handler: 'handleBranchCompare',
     errorLabel: 'Compare',
+    readOnly: true,
+    interactive: true,
   },
   {
     flag: '--cherry-pick',
@@ -145,6 +162,8 @@ const COMMAND_REGISTRY: CommandEntry[] = [
     module: './workflows/history.js',
     handler: 'handleHistory',
     errorLabel: 'History',
+    readOnly: true,
+    interactive: true,
   },
   {
     flag: '--stash',
@@ -166,6 +185,7 @@ const COMMAND_REGISTRY: CommandEntry[] = [
     module: './workflows/stats.js',
     handler: 'handleStats',
     errorLabel: 'Stats',
+    readOnly: true,
   },
   {
     flag: '--undo',
@@ -302,6 +322,7 @@ const COMMAND_REGISTRY: CommandEntry[] = [
     module: './workflows/doctor.js',
     handler: 'handleWhereInstalled',
     errorLabel: 'Where',
+    readOnly: true,
   },
   // Update
   {
@@ -327,12 +348,14 @@ const START_AT_FLAGS: {
 ]
 
 /** Modifier flags that don't trigger a command on their own */
-const MODIFIER_FLAGS: { flag: string; alias: string }[] = [
+const MODIFIER_FLAGS: { flag: string; alias?: string }[] = [
   { flag: '--fresh', alias: '-f' },
   { flag: '--resume', alias: '-r' },
   { flag: '--version', alias: '-v' },
   { flag: '--help', alias: '-h' },
   { flag: '--dry-run', alias: '-dr' },
+  { flag: '--json' },
+  { flag: '--allow-mutations' },
 ]
 
 // ─── Valid Flags (auto-generated from registries) ────────────────────
@@ -356,7 +379,7 @@ function buildValidFlags(): Set<string> {
 
   for (const mf of MODIFIER_FLAGS) {
     flags.add(mf.flag)
-    flags.add(mf.alias)
+    if (mf.alias) flags.add(mf.alias)
   }
 
   return flags
@@ -374,6 +397,8 @@ interface ParsedArgs {
   dryRunMode: boolean
   showVersion: boolean
   showHelp: boolean
+  jsonMode: boolean
+  allowMutations: boolean
   /** Set of matched command flags (by primary flag name) */
   activeFlags: Set<string>
 }
@@ -386,6 +411,8 @@ function parseArgs(argv: string[]): ParsedArgs {
   let dryRunMode = false
   let showVersion = false
   let showHelp = false
+  let jsonMode = false
+  let allowMutations = false
   const activeFlags = new Set<string>()
 
   for (const arg of argv) {
@@ -408,6 +435,8 @@ function parseArgs(argv: string[]): ParsedArgs {
     if (arg === '-v' || arg === '--version') showVersion = true
     if (arg === '-h' || arg === '--help') showHelp = true
     if (arg === '--dry-run' || arg === '-dr') dryRunMode = true
+    if (arg === '--json') jsonMode = true
+    if (arg === '--allow-mutations') allowMutations = true
 
     // Command registry lookup
     for (const cmd of COMMAND_REGISTRY) {
@@ -427,6 +456,8 @@ function parseArgs(argv: string[]): ParsedArgs {
     dryRunMode,
     showVersion,
     showHelp,
+    jsonMode,
+    allowMutations,
     activeFlags,
   }
 }
@@ -511,6 +542,8 @@ function showHelpMessage(): void {
   console.log(`    ${C}-f,  --fresh${R}              Start fresh (ignore checkpoint)`)
   console.log(`    ${C}-r,  --resume${R}             Resume from last checkpoint`)
   console.log(`    ${C}-dr, --dry-run${R}            Simulate commands without executing`)
+  console.log(`    ${C}     --json${R}                Emit versioned JSON for read-only automation`)
+  console.log(`    ${C}     --allow-mutations${R}     Allow mutation commands in JSON mode`)
   console.log(`    ${C}-v,  --version${R}            Show version`)
   console.log(`    ${C}-h,  --help${R}               Show this help message`)
   console.log('')
@@ -568,6 +601,39 @@ const MODULE_LOADERS: Record<
   './workflows/update.js': () => import('./workflows/update.js'),
 }
 
+class JsonValidationError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'JsonValidationError'
+  }
+}
+
+const getSelectedCommand = (args: ParsedArgs): CommandEntry | undefined =>
+  COMMAND_REGISTRY.find((command) => args.activeFlags.has(command.flag))
+
+const getInvocationLabel = (args: ParsedArgs, command: CommandEntry | undefined): string => {
+  if (args.showVersion) return '--version'
+  if (args.showHelp) return '--help'
+  if (command) return command.flag
+  if (args.startAt) return `--${args.startAt}`
+  return 'workflow'
+}
+
+const isMutationInvocation = (args: ParsedArgs, command: CommandEntry | undefined): boolean => {
+  if (args.showVersion || args.showHelp) return false
+  if (command) return command.readOnly !== true
+  return true
+}
+
+const getUnknownFlag = (argv: readonly string[]): string | undefined =>
+  argv.find((arg) => arg.startsWith('-') && !validFlags.has(arg))
+
+const getCapturedErrorMessage = (error: unknown, stderr: string, fallback: string): string => {
+  if (error instanceof JsonValidationError) return error.message
+  if (error instanceof Error && !(error instanceof JsonExitSignal)) return error.message
+  return stderr.trim() || fallback
+}
+
 async function handleDryRunSetup(args: ParsedArgs): Promise<void> {
   const { setDryRun, printDryRunBanner, printDryRunSummary } = await import('./utils/dry-run.js')
 
@@ -580,6 +646,7 @@ async function handleDryRunSetup(args: ParsedArgs): Promise<void> {
       await handleDryRunMenu()
       process.exit(0)
     } catch (error) {
+      if (error instanceof JsonExitSignal) throw error
       console.error('Dry-run error:', error)
       process.exit(1)
     }
@@ -617,7 +684,7 @@ async function executeCommand(args: ParsedArgs): Promise<void> {
   }
 
   // 3. Silent update check (skipped for --version/--help/--uninstall/--update)
-  if (!args.activeFlags.has('--uninstall') && !args.activeFlags.has('--update')) {
+  if (!args.jsonMode && !args.activeFlags.has('--uninstall') && !args.activeFlags.has('--update')) {
     try {
       const updateInfo = await checkForUpdate()
       if (updateInfo?.hasUpdate) {
@@ -646,6 +713,7 @@ async function executeCommand(args: ParsedArgs): Promise<void> {
         }
         process.exit(0)
       } catch (error) {
+        if (error instanceof JsonExitSignal) throw error
         console.error(`${cmd.errorLabel} error:`, error)
         process.exit(1)
       }
@@ -654,29 +722,129 @@ async function executeCommand(args: ParsedArgs): Promise<void> {
 
   // 7. Default: run main workflow
   const { main } = await import('./workflows/main.js')
-  main({
+  await main({
     startAt: args.startAt,
     fresh: args.fresh,
     resume: args.resume,
     stageAll: args.stageAll,
   }).catch((error: unknown) => {
+    if (error instanceof JsonExitSignal) throw error
     console.error('Fatal error:', error)
     process.exit(1)
   })
+}
+
+async function runJsonCommand(argv: readonly string[]): Promise<void> {
+  const captureSession = startJsonOutputCapture()
+  const originalExit = process.exit
+  let commandLabel = 'cli'
+  let result: CliJsonOutput | undefined
+
+  process.exit = ((code?: number): never => {
+    throw new JsonExitSignal(code ?? 0)
+  }) as typeof process.exit
+
+  try {
+    const unknownFlag = getUnknownFlag(argv)
+    if (unknownFlag) {
+      commandLabel = unknownFlag
+      throw new JsonValidationError(`Unknown flag: ${unknownFlag}`)
+    }
+
+    const args = parseArgs([...argv])
+    const command = getSelectedCommand(args)
+    commandLabel = getInvocationLabel(args, command)
+
+    if (isMutationInvocation(args, command) && !args.allowMutations) {
+      throw new JsonValidationError(
+        `Mutation command ${commandLabel} requires explicit opt-in with --allow-mutations.`
+      )
+    }
+    if (!process.stdin.isTTY && command?.interactive) {
+      throw new JsonValidationError(
+        `Read-only command ${commandLabel} requires a TTY for interactive selection.`
+      )
+    }
+
+    await executeCommand(args)
+    const status = classifyOutputCancellation(captureSession.capture) ? 'cancel' : 'success'
+    result = createCliJsonOutput({ command: commandLabel, status, capture: captureSession.capture })
+  } catch (error: unknown) {
+    if (error instanceof JsonExitSignal) {
+      let status: CliJsonStatus = classifyJsonExit(error)
+      if (status === 'success' && classifyOutputCancellation(captureSession.capture))
+        status = 'cancel'
+
+      const errorMessage =
+        status === 'runtime-failure'
+          ? getCapturedErrorMessage(
+              error,
+              captureSession.capture.stderr,
+              `Command ${commandLabel} failed.`
+            )
+          : undefined
+      result = createCliJsonOutput({
+        command: commandLabel,
+        status,
+        capture: captureSession.capture,
+        error: errorMessage ? { code: 'RUNTIME_ERROR', message: errorMessage } : null,
+      })
+    } else if (error instanceof JsonValidationError) {
+      result = createCliJsonOutput({
+        command: commandLabel,
+        status: 'validation-failure',
+        capture: captureSession.capture,
+        error: { code: 'VALIDATION_ERROR', message: error.message },
+      })
+    } else {
+      result = createCliJsonOutput({
+        command: commandLabel,
+        status: 'runtime-failure',
+        capture: captureSession.capture,
+        error: {
+          code: 'RUNTIME_ERROR',
+          message: getCapturedErrorMessage(
+            error,
+            captureSession.capture.stderr,
+            `Command ${commandLabel} failed.`
+          ),
+        },
+      })
+    }
+  } finally {
+    stopActiveSpinners()
+    captureSession.restore()
+    process.exit = originalExit
+  }
+
+  const finalResult =
+    result ??
+    createCliJsonOutput({
+      command: commandLabel,
+      status: 'runtime-failure',
+      capture: captureSession.capture,
+      error: { code: 'RUNTIME_ERROR', message: `Command ${commandLabel} failed.` },
+    })
+  process.exitCode = finalResult.exit_code
+  process.stdout.write(`${JSON.stringify(finalResult)}\n`)
 }
 
 // ─── Entry Point ─────────────────────────────────────────────────────
 
 const argv = process.argv.slice(2)
 
-// Validate unknown flags
-for (const arg of argv) {
-  if (arg.startsWith('-') && !validFlags.has(arg)) {
-    console.error(`Unknown flag: ${arg}`)
-    console.error('Use --help to see available options')
-    process.exit(1)
+if (argv.includes('--json')) {
+  void runJsonCommand(argv)
+} else {
+  // Validate unknown flags
+  for (const arg of argv) {
+    if (arg.startsWith('-') && !validFlags.has(arg)) {
+      console.error(`Unknown flag: ${arg}`)
+      console.error('Use --help to see available options')
+      process.exit(1)
+    }
   }
-}
 
-const args = parseArgs(argv)
-void executeCommand(args)
+  const args = parseArgs(argv)
+  void executeCommand(args)
+}

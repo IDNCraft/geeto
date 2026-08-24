@@ -171,13 +171,37 @@ Generated content remains reviewable before use. Change providers or model favor
 
 ### Options
 
-| Command                | Description                         |
-| ---------------------- | ----------------------------------- |
-| `geeto -f, --fresh`    | Start fresh (ignore checkpoint)     |
-| `geeto -r, --resume`   | Resume from last checkpoint         |
-| `geeto -dr, --dry-run` | Simulate commands without executing |
-| `geeto -v, --version`  | Show version + update status        |
-| `geeto -h, --help`     | Show help                           |
+| Command                   | Description                                      |
+| ------------------------- | ------------------------------------------------ |
+| `geeto -f, --fresh`       | Start fresh (ignore checkpoint)                  |
+| `geeto -r, --resume`      | Resume from last checkpoint                      |
+| `geeto -dr, --dry-run`    | Simulate commands without executing              |
+| `geeto --json`            | Emit versioned JSON for read-only automation     |
+| `geeto --allow-mutations` | Explicitly allow mutation commands with `--json` |
+| `geeto -v, --version`     | Show version + update status                     |
+| `geeto -h, --help`        | Show help                                        |
+
+### JSON automation
+
+Pass `--json` to a read-only command to emit one machine-readable JSON document without ANSI escape sequences:
+
+```bash
+geeto --status --json
+geeto --stats --json
+```
+
+JSON mode supports `--status`, `--compare`, `--log`, `--stats`, and `--where`, plus `--version` and `--help`. Interactive read-only commands require a TTY. Mutation commands—including the default workflow, staging, commits, pushes, settings, and updates—fail validation unless `--allow-mutations` is also provided. Human mode is unchanged; `--allow-mutations` has no effect without `--json`.
+
+The schema is versioned at [`docs/cli-json-schema.json`](docs/cli-json-schema.json). Every response contains:
+
+| Field               | Meaning                                                                    |
+| ------------------- | -------------------------------------------------------------------------- |
+| `schema_version`    | JSON contract version; currently `1`                                       |
+| `command`           | Resolved CLI command                                                       |
+| `status`            | `success`, `cancel`, `validation-failure`, or `runtime-failure`            |
+| `exit_code`         | `0` success, `1` runtime failure, `2` validation failure, `3` cancellation |
+| `stdout` / `stderr` | Captured output, ANSI-free                                                 |
+| `error`             | `null` on success/cancel; otherwise error code and message                 |
 
 ### Management
 

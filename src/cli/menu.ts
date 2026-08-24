@@ -2,8 +2,10 @@
  * Interactive menu utilities
  */
 
+import fs from 'node:fs'
 import type { SelectOption } from '../types/index.js'
 
+import { isJsonOutputEnabled } from '../utils/cli-json.js'
 import { colors } from '../utils/colors.js'
 
 let currentDataListener: ((key: Buffer) => void) | null = null
@@ -22,6 +24,17 @@ const getLineCount = (text: string): number => {
  * Interactive select menu with arrow keys and search
  */
 export const select = async (question: string, options: SelectOption[]): Promise<string> => {
+  if (isJsonOutputEnabled() && !process.stdin.isTTY) {
+    let input = ''
+    try {
+      input = fs.readFileSync(0, 'utf8').trim().toLowerCase()
+    } catch {
+      // Treat unavailable piped input as cancellation.
+    }
+    if (input === 'q' || input === '') console.log('\n\nCancelled by user')
+    return ''
+  }
+
   return new Promise((resolve) => {
     let selectedIndex = 0
     // Overhead: blank + scroll-above + scroll-below-blank + scroll-below + separator + hint(1-2) + question = ~8
@@ -322,6 +335,10 @@ export const select = async (question: string, options: SelectOption[]): Promise
         case '\u0003': {
           cleanup()
           console.log('\n\nCancelled by user')
+          if (isJsonOutputEnabled()) {
+            resolve('')
+            break
+          }
           process.exit(0)
         }
         case 'c':
@@ -380,6 +397,16 @@ export const multiSelect = async (
   options: SelectOption[],
   preSelected?: string[]
 ): Promise<string[]> => {
+  if (isJsonOutputEnabled() && !process.stdin.isTTY) {
+    try {
+      fs.readFileSync(0, 'utf8')
+    } catch {
+      // Treat unavailable piped input as cancellation.
+    }
+    console.log('\n\nCancelled by user')
+    return []
+  }
+
   return new Promise((resolve) => {
     let selectedIndex = 0
     // Skip initial disabled items (but allow group headers with children)
@@ -833,6 +860,10 @@ export const multiSelect = async (
         case '\u0003': {
           cleanup()
           console.log('\n\nCancelled by user')
+          if (isJsonOutputEnabled()) {
+            resolve([])
+            break
+          }
           process.exit(0)
         }
         case 'c':

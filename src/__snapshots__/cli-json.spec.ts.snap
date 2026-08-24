@@ -1,0 +1,91 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`CLI JSON subprocess contract snapshots deterministic read-only JSON output 1`] = `
+{
+  "command": "--help",
+  "error": null,
+  "exit_code": 0,
+  "schema_version": 1,
+  "status": "success",
+  "stderr": "",
+  "stdout": 
+"
+  Geeto CLI v0.14.5
+  Git flow automation with AI-powered workflows
+
+  USAGE
+    geeto [command] [options]
+
+  WORKFLOW
+    -s,  --stage              Stage files interactively
+    -sa, -as                  Stage all changes automatically
+    -c,  --commit             Create a commit with AI message
+    -b,  --branch             Create a branch with AI name
+    -p,  --push               Push current branch to remote
+    -m,  --merge              Merge branches interactively
+
+  GIT TOOLS
+    -cl, --cleanup            Clean up local & remote branches
+    -sw, --switch             Switch branches with fuzzy search
+    -cmp, --compare           Compare current branch with another
+    -cp, --cherry-pick        Cherry-pick from another branch
+    -lg, --log                View commit history with timeline
+    -sh, --stash              Manage stashes interactively
+    -am, --amend              Amend the last commit
+    -u,  --undo               Undo the last git action safely
+    -rv, --revert             Revert the last commit (soft reset)
+    -al, --alias              Install shell aliases for geeto
+    -rw, --reword             Edit past commit messages
+    -sts, --stats             Repository statistics dashboard
+    -sm, --submodules         Manage git submodules
+         --abort              Abort in-progress operation
+    -pl, --pull               Pull from remote interactively
+    -ft, --fetch              Fetch latest from remote
+         --prune              Remove stale remote branches
+    -st, --status             Pretty git status overview
+
+  GITHUB / GITLAB
+    -pr, --pr                 Create a Pull Request / Merge Request
+    -rvp, --review-pr         Review and comment Pull Request / Merge Request with AI
+    -rvi, --review-issue      Review and comment Issue with AI
+    -i,  --issue              Create an Issue
+    -t,  --tag                Release & tag manager with semver
+    -rp, --repo               Update repo settings
+
+  TRELLO
+    -tr, --trello             Open Trello menu
+    -tg, --trello-generate    Generate tasks from Trello
+
+  SETTINGS
+         --setup-gemini       Configure Gemini AI
+         --setup-openrouter   Configure OpenRouter AI
+         --setup-groq         Configure Groq AI
+         --setup-codex        Configure OpenAI Codex
+         --setup-opencode     Check OpenCode Zen CLI availability
+         --setup-github       Configure GitHub token
+         --setup-gitlab       Configure GitLab token
+         --setup-trello       Configure Trello integration
+         --change-model       Switch AI provider / model
+         --sync-models        Fetch latest model list
+         --separator          Set branch name separator
+
+  OPTIONS
+    -f,  --fresh              Start fresh (ignore checkpoint)
+    -r,  --resume             Resume from last checkpoint
+    -dr, --dry-run            Simulate commands without executing
+         --json                Emit versioned JSON for read-only automation
+         --allow-mutations     Allow mutation commands in JSON mode
+    -v,  --version            Show version
+    -h,  --help               Show this help message
+
+  INFO
+         --where              Show installation path & method
+         --uninstall          Uninstall geeto CLI
+
+  UPDATE
+    -up, --update             Update geeto to the latest version
+
+"
+,
+}
+`;

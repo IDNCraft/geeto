@@ -1,0 +1,141 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/IDNCraft/geeto/blob/main/docs/cli-json-schema.json",
+  "title": "Geeto CLI JSON output",
+  "description": "Versioned output envelope emitted by read-only automation commands.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "command", "status", "exit_code", "stdout", "stderr", "error"],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "command": {
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "enum": ["success", "cancel", "validation-failure", "runtime-failure"]
+    },
+    "exit_code": {
+      "enum": [0, 1, 2, 3]
+    },
+    "stdout": {
+      "type": "string",
+      "description": "Captured standard output with ANSI and carriage-return controls removed."
+    },
+    "stderr": {
+      "type": "string",
+      "description": "Captured standard error with ANSI and carriage-return controls removed."
+    },
+    "error": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["code", "message"],
+          "properties": {
+            "code": {
+              "enum": ["VALIDATION_ERROR", "RUNTIME_ERROR"]
+            },
+            "message": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "success"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "exit_code": {
+            "const": 0
+          },
+          "error": {
+            "const": null
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "cancel"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "exit_code": {
+            "const": 3
+          },
+          "error": {
+            "const": null
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "validation-failure"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "exit_code": {
+            "const": 2
+          },
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "const": "VALIDATION_ERROR"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "runtime-failure"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "exit_code": {
+            "const": 1
+          },
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "const": "RUNTIME_ERROR"
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}

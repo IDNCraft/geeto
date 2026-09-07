@@ -88,7 +88,7 @@
     "install:local": "bash scripts/install-local.sh"
   },
   "devDependencies": {
-    "@commitlint/cli": "^20.4.2",
+    "@commitlint/cli": "^21.2.2",
     "@commitlint/config-conventional": "^20.4.2",
     "@ianvs/prettier-plugin-sort-imports": "^4.7.1",
     "@release-it/conventional-changelog": "^10.0.5",

@@ -121,7 +121,7 @@
   "dependencies": {
     "@google/genai": "^1.42.0",
     "@openai/codex-sdk": "^0.144.3",
-    "@opencode-ai/sdk": "1.18.16",
+    "@opencode-ai/sdk": "1.18.27",
     "openai": "^6.39.1",
     "opencode-ai": "1.18.16"
   },
